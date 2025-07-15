@@ -65,6 +65,7 @@ import java.lang.IllegalStateException
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
+import io.datazoom.sdk.mediatailor.setupAdSession
 
 internal class BetterPlayer(
     context: Context,
@@ -106,6 +107,22 @@ internal class BetterPlayer(
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
             .build()
+
+        val configId = Properties().apply {
+                load(File(context.filesDir.parentFile?.parentFile, "local.properties").inputStream())
+            }.getProperty("datazoom.configId")
+        if (!Datazoom.isInitialized()) {
+            Datazoom.init(
+                Config.Builder("your-config-id-here")
+                    .logLevel(LogLevel.VERBOSE)
+                    .build()
+            )
+        }
+            
+            
+
+        val playerContext = Datazoom.createContext(exoPlayer)
+        
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         setupVideoPlayer(eventChannel, textureEntry, result)
@@ -197,6 +214,20 @@ internal class BetterPlayer(
         } else {
             exoPlayer?.setMediaSource(mediaSource)
         }
+
+        // --- Datazoom MediaTailor Session Initialization ---
+        val sessionConfig = SessionConfiguration.Builder()
+        .sessionInitUrl(dataSource) // Use the content URL
+        .build()
+
+        MediaTailor.createSession(sessionConfig) { session, error ->
+            if (error != null) {
+                Log.e(TAG, "Datazoom session error: $error")
+            } else if (session != null) {
+                playerContext?.setupAdSession(session, null, dataSource)
+            }
+        }
+        // --- End of Datazoom Integration ---
         exoPlayer?.prepare()
         result.success(null)
     }
