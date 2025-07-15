@@ -108,9 +108,7 @@ internal class BetterPlayer(
             .setLoadControl(loadControl)
             .build()
 
-        val configId = Properties().apply {
-                load(File(context.filesDir.parentFile?.parentFile, "local.properties").inputStream())
-            }.getProperty("datazoom.configId")
+        val configId = BuildConfig.DATAZOOM_CONFIG_ID
         if (!Datazoom.isInitialized()) {
             Datazoom.init(
                 Config.Builder("your-config-id-here")

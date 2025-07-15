@@ -39,6 +39,7 @@ android {
 
     defaultConfig {
         minSdk 21
+        buildConfigField "String", "DATAZOOM_CONFIG_ID", "\"${project.properties['DATAZOOM_CONFIG_ID']}\""
     }
 
     // Moved sourceSets inside android block
