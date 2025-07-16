@@ -111,7 +111,7 @@ internal class BetterPlayer(
         val configId = BuildConfig.DATAZOOM_CONFIG_ID
         if (!Datazoom.isInitialized()) {
             Datazoom.init(
-                Config.Builder("your-config-id-here")
+                Config.Builder(configId)
                     .logLevel(LogLevel.VERBOSE)
                     .build()
             )
