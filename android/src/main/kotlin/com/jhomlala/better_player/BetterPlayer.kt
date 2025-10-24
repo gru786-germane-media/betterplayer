@@ -66,6 +66,13 @@ import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 import io.datazoom.sdk.mediatailor.setupAdSession
+import io.datazoom.sdk.base.Datazoom
+import io.datazoom.sdk.base.Config
+import io.datazoom.sdk.base.LogLevel
+import io.datazoom.sdk.mediatailor.MediaTailor
+import io.datazoom.sdk.mediatailor.SessionConfiguration
+import io.datazoom.sdk.mediatailor.setupAdSession
+
 
 internal class BetterPlayer(
     context: Context,

@@ -15,8 +15,15 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.3.0' // Updated AGP
+        classpath 'com.android.tools.build:gradle:8.2.1' // Updated AGP
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
     }
 }
 
@@ -69,6 +76,10 @@ dependencies {
     implementation "androidx.core:core-ktx:$coreVersion"
     implementation "androidx.media:media:1.7.0"
     // Flutter dependencies
-    implementation project(':wakelock_plus') // Ensure this project exists
+
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
+
+    implementation 'io.datazoom.sdk:base-android:4.1.18'
+    implementation 'io.datazoom.sdk:mediatailor:0.0.18'
+
 }
