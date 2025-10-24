@@ -1,13 +1,8 @@
-group 'com.jhomlala.better_player.better_player'
+group 'com.jhomlala.better_player'
 version '1.0-SNAPSHOT'
 
 buildscript {
-    ext.exoPlayerVersion = "2.19.1"
-    ext.lifecycleVersion = "2.6.1"
-    ext.annotationVersion = "1.6.0"
-    ext.workVersion = "2.8.1"
-    ext.coreVersion = "1.9.0"
-    ext.kotlinVersion = "1.9.22" // Match your project's Kotlin version
+    ext.kotlinVersion = "1.9.22"
 
     repositories {
         google()
@@ -15,7 +10,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.1' // Updated AGP
+        classpath 'com.android.tools.build:gradle:8.3.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
     }
 }
@@ -24,16 +19,23 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url 'https://jitpack.io' } // For Datazoom if needed
     }
 }
 
-// Apply plugins FIRST before configuring Android
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
-    namespace 'com.jhomlala.better_player' // Required namespace
+    namespace 'com.jhomlala.better_player'
     compileSdk 34
+
+    defaultConfig {
+        minSdk 21
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "DATAZOOM_CONFIG_ID", "\"${project.properties['DATAZOOM_CONFIG_ID']}\""
+    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -48,12 +50,6 @@ android {
         buildConfig true
     }
 
-    defaultConfig {
-        minSdk 21
-        buildConfigField "String", "DATAZOOM_CONFIG_ID", "\"${project.properties['DATAZOOM_CONFIG_ID']}\""
-    }
-
-    // Moved sourceSets inside android block
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
     }
@@ -61,25 +57,25 @@ android {
 
 dependencies {
     // ExoPlayer
-    implementation "com.google.android.exoplayer:exoplayer-core:$exoPlayerVersion"
-    implementation "com.google.android.exoplayer:exoplayer-hls:$exoPlayerVersion"
-    implementation "com.google.android.exoplayer:exoplayer-dash:$exoPlayerVersion"
-    implementation "com.google.android.exoplayer:exoplayer-smoothstreaming:$exoPlayerVersion"
-    implementation "com.google.android.exoplayer:exoplayer-ui:$exoPlayerVersion"
-    implementation "com.google.android.exoplayer:extension-mediasession:$exoPlayerVersion"
+    implementation "com.google.android.exoplayer:exoplayer-core:2.19.1"
+    implementation "com.google.android.exoplayer:exoplayer-hls:2.19.1"
+    implementation "com.google.android.exoplayer:exoplayer-dash:2.19.1"
+    implementation "com.google.android.exoplayer:exoplayer-smoothstreaming:2.19.1"
+    implementation "com.google.android.exoplayer:exoplayer-ui:2.19.1"
+    implementation "com.google.android.exoplayer:extension-mediasession:2.19.1"
 
     // AndroidX
-    implementation "androidx.lifecycle:lifecycle-runtime-ktx:$lifecycleVersion"
-    implementation "androidx.lifecycle:lifecycle-common:$lifecycleVersion"
-    implementation "androidx.annotation:annotation:$annotationVersion"
-    implementation "androidx.work:work-runtime-ktx:$workVersion"
-    implementation "androidx.core:core-ktx:$coreVersion"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.1"
+    implementation "androidx.lifecycle:lifecycle-common:2.6.1"
+    implementation "androidx.annotation:annotation:1.6.0"
+    implementation "androidx.work:work-runtime-ktx:2.8.1"
+    implementation "androidx.core:core-ktx:1.9.0"
     implementation "androidx.media:media:1.7.0"
-    // Flutter dependencies
 
+    // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
 
+    // Datazoom
     implementation 'io.datazoom.sdk:base-android:4.1.18'
     implementation 'io.datazoom.sdk:mediatailor:0.0.18'
-
 }
