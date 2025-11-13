@@ -72,6 +72,14 @@ import io.datazoom.sdk.base.LogLevel
 import io.datazoom.sdk.mediatailor.MediaTailor
 import io.datazoom.sdk.mediatailor.SessionConfiguration
 import io.datazoom.sdk.mediatailor.setupAdSession
+import io.datazoom.sdk.BaseContext
+import io.datazoom.sdk.Datazoom
+import io.datazoom.sdk.DzAdapter
+
+import com.google.android.exoplayer2.ui.PlayerView
+
+
+
 
 
 internal class BetterPlayer(
@@ -101,7 +109,42 @@ internal class BetterPlayer(
         customDefaultLoadControl ?: CustomDefaultLoadControl()
     private var lastSendBufferedPosition = 0L
 
+
+    //START MEDIA TAYLOR integration
+    private val adapter: DzAdapter? = null
+
+    private val  playerView: PlayerView
+
+    //END MEDIA TAYLOR integration
+
+
+
     init {
+
+        //START MEDIA TAYLOR integration
+        val configId = BuildConfig.DATAZOOM_CONFIG_ID
+//        Datazoom.init(
+//            build(
+//                configurationId = configId,
+//                block = {
+//                    logLevel(LogLevel.VERBOSE)
+//                }
+//            )
+//        )
+        Datazoom.init(
+            build(
+                configurationId = configId,
+                {
+                    logLevel(LogLevel.VERBOSE)
+                }
+            )
+        )
+        MediaTailor.setLogLevel(LogLevel.DEBUG)
+
+
+        //END MEDIA TAYLOR integration
+
+
         val loadBuilder = DefaultLoadControl.Builder()
         loadBuilder.setBufferDurationsMs(
             this.customDefaultLoadControl.minBufferMs,
@@ -115,18 +158,21 @@ internal class BetterPlayer(
             .setLoadControl(loadControl)
             .build()
 
-        val configId = BuildConfig.DATAZOOM_CONFIG_ID
-        if (!Datazoom.isInitialized()) {
-            Datazoom.init(
-                Config.Builder(configId)
-                    .logLevel(LogLevel.VERBOSE)
-                    .build()
-            )
-        }
-            
-            
 
-        val playerContext = Datazoom.createContext(exoPlayer)
+
+        //START MEDIA TAYLOR integration
+        playerView = PlayerView(context).apply {
+            useController = false
+            player = exoPlayer
+            visibility = View.GONE // hide if Flutter renders video via texture
+        }
+
+
+
+
+        adapter = Datazoom.createContext(exoPlayer)
+
+        //END MEDIA TAYLOR integration
         
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
@@ -151,90 +197,185 @@ internal class BetterPlayer(
     ) {
         this.key = key
         isInitialized = false
-        val uri = Uri.parse(dataSource)
-        var dataSourceFactory: DataSource.Factory?
-        val userAgent = getUserAgent(headers)
-        if (licenseUrl != null && licenseUrl.isNotEmpty()) {
-            val httpMediaDrmCallback =
-                HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
-            if (drmHeaders != null) {
-                for ((drmKey, drmValue) in drmHeaders) {
-                    httpMediaDrmCallback.setKeyRequestProperty(drmKey, drmValue)
+
+//        val uri = Uri.parse(dataSource)
+
+        //START MEDIA TAYLOR integration
+
+        val newDataSource = "https://ba55651fa5ec6d94b145a8bbfdd79f02.ieyo6i.channel-assembly.mediatailor.eu-north-1.amazonaws.com/v1/channel/CineShortsNew/germane.m3u8"
+
+
+
+
+
+        val configBuilder = SessionConfiguration.Builder()
+            .sessionInitUrl(newDataSource)
+
+        fun onSessionCreationOK(session: Session) {
+
+            adapter.setupAdSession(session, playerView, session.playbackUrl)
+
+
+            val uri = Uri.parse(session.playbackUrl)
+            var dataSourceFactory: DataSource.Factory?
+            val userAgent = getUserAgent(headers)
+            if (licenseUrl != null && licenseUrl.isNotEmpty()) {
+                val httpMediaDrmCallback =
+                    HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
+                if (drmHeaders != null) {
+                    for ((drmKey, drmValue) in drmHeaders) {
+                        httpMediaDrmCallback.setKeyRequestProperty(drmKey, drmValue)
+                    }
                 }
-            }
-            if (Util.SDK_INT < 18) {
-                Log.e(TAG, "Protected content not supported on API levels below 18")
-                drmSessionManager = null
-            } else {
-                val drmSchemeUuid = Util.getDrmUuid("widevine")
-                if (drmSchemeUuid != null) {
-                    drmSessionManager = DefaultDrmSessionManager.Builder()
-                        .setUuidAndExoMediaDrmProvider(
-                            drmSchemeUuid
-                        ) { uuid: UUID? ->
-                            try {
-                                val mediaDrm = FrameworkMediaDrm.newInstance(uuid!!)
-                                // Force L3.
-                                mediaDrm.setPropertyString("securityLevel", "L3")
-                                return@setUuidAndExoMediaDrmProvider mediaDrm
-                            } catch (e: UnsupportedDrmException) {
-                                return@setUuidAndExoMediaDrmProvider DummyExoMediaDrm()
+                if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    drmSessionManager = null
+                } else {
+                    val drmSchemeUuid = Util.getDrmUuid("widevine")
+                    if (drmSchemeUuid != null) {
+                        drmSessionManager = DefaultDrmSessionManager.Builder()
+                            .setUuidAndExoMediaDrmProvider(
+                                drmSchemeUuid
+                            ) { uuid: UUID? ->
+                                try {
+                                    val mediaDrm = FrameworkMediaDrm.newInstance(uuid!!)
+                                    // Force L3.
+                                    mediaDrm.setPropertyString("securityLevel", "L3")
+                                    return@setUuidAndExoMediaDrmProvider mediaDrm
+                                } catch (e: UnsupportedDrmException) {
+                                    return@setUuidAndExoMediaDrmProvider DummyExoMediaDrm()
+                                }
                             }
-                        }
-                        .setMultiSession(false)
-                        .build(httpMediaDrmCallback)
+                            .setMultiSession(false)
+                            .build(httpMediaDrmCallback)
+                    }
                 }
-            }
-        } else if (clearKey != null && clearKey.isNotEmpty()) {
-            drmSessionManager = if (Util.SDK_INT < 18) {
-                Log.e(TAG, "Protected content not supported on API levels below 18")
-                null
+            } else if (clearKey != null && clearKey.isNotEmpty()) {
+                drmSessionManager = if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    null
+                } else {
+                    DefaultDrmSessionManager.Builder()
+                        .setUuidAndExoMediaDrmProvider(
+                            C.CLEARKEY_UUID,
+                            FrameworkMediaDrm.DEFAULT_PROVIDER
+                        ).build(LocalMediaDrmCallback(clearKey.toByteArray()))
+                }
             } else {
-                DefaultDrmSessionManager.Builder()
-                    .setUuidAndExoMediaDrmProvider(
-                        C.CLEARKEY_UUID,
-                        FrameworkMediaDrm.DEFAULT_PROVIDER
-                    ).build(LocalMediaDrmCallback(clearKey.toByteArray()))
+                drmSessionManager = null
             }
-        } else {
-            drmSessionManager = null
-        }
-        if (isHTTP(uri)) {
-            dataSourceFactory = getDataSourceFactory(userAgent, headers)
-            if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
-                dataSourceFactory = CacheDataSourceFactory(
-                    context,
-                    maxCacheSize,
-                    maxCacheFileSize,
-                    dataSourceFactory
-                )
+            if (isHTTP(uri)) {
+                dataSourceFactory = getDataSourceFactory(userAgent, headers)
+                if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
+                    dataSourceFactory = CacheDataSourceFactory(
+                        context,
+                        maxCacheSize,
+                        maxCacheFileSize,
+                        dataSourceFactory
+                    )
+                }
+            } else {
+                dataSourceFactory = DefaultDataSource.Factory(context)
             }
-        } else {
-            dataSourceFactory = DefaultDataSource.Factory(context)
-        }
-        val mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, cacheKey, context)
-        if (overriddenDuration != 0L) {
-            val clippingMediaSource = ClippingMediaSource(mediaSource, 0, overriddenDuration * 1000)
-            exoPlayer?.setMediaSource(clippingMediaSource)
-        } else {
-            exoPlayer?.setMediaSource(mediaSource)
+            val mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, cacheKey, context)
+            if (overriddenDuration != 0L) {
+                val clippingMediaSource = ClippingMediaSource(mediaSource, 0, overriddenDuration * 1000)
+                exoPlayer?.setMediaSource(clippingMediaSource)
+            } else {
+                exoPlayer?.setMediaSource(mediaSource)
+            }
+            exoPlayer?.prepare()
+            result.success(null)
+
         }
 
-        // --- Datazoom MediaTailor Session Initialization ---
-        val sessionConfig = SessionConfiguration.Builder()
-        .sessionInitUrl(dataSource) // Use the content URL
-        .build()
+        fun onSessionCreationError(error: SessionError) {
+            val uri = Uri.parse(newDataSource)
+            var dataSourceFactory: DataSource.Factory?
+            val userAgent = getUserAgent(headers)
+            if (licenseUrl != null && licenseUrl.isNotEmpty()) {
+                val httpMediaDrmCallback =
+                    HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
+                if (drmHeaders != null) {
+                    for ((drmKey, drmValue) in drmHeaders) {
+                        httpMediaDrmCallback.setKeyRequestProperty(drmKey, drmValue)
+                    }
+                }
+                if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    drmSessionManager = null
+                } else {
+                    val drmSchemeUuid = Util.getDrmUuid("widevine")
+                    if (drmSchemeUuid != null) {
+                        drmSessionManager = DefaultDrmSessionManager.Builder()
+                            .setUuidAndExoMediaDrmProvider(
+                                drmSchemeUuid
+                            ) { uuid: UUID? ->
+                                try {
+                                    val mediaDrm = FrameworkMediaDrm.newInstance(uuid!!)
+                                    // Force L3.
+                                    mediaDrm.setPropertyString("securityLevel", "L3")
+                                    return@setUuidAndExoMediaDrmProvider mediaDrm
+                                } catch (e: UnsupportedDrmException) {
+                                    return@setUuidAndExoMediaDrmProvider DummyExoMediaDrm()
+                                }
+                            }
+                            .setMultiSession(false)
+                            .build(httpMediaDrmCallback)
+                    }
+                }
+            } else if (clearKey != null && clearKey.isNotEmpty()) {
+                drmSessionManager = if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    null
+                } else {
+                    DefaultDrmSessionManager.Builder()
+                        .setUuidAndExoMediaDrmProvider(
+                            C.CLEARKEY_UUID,
+                            FrameworkMediaDrm.DEFAULT_PROVIDER
+                        ).build(LocalMediaDrmCallback(clearKey.toByteArray()))
+                }
+            } else {
+                drmSessionManager = null
+            }
+            if (isHTTP(uri)) {
+                dataSourceFactory = getDataSourceFactory(userAgent, headers)
+                if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
+                    dataSourceFactory = CacheDataSourceFactory(
+                        context,
+                        maxCacheSize,
+                        maxCacheFileSize,
+                        dataSourceFactory
+                    )
+                }
+            } else {
+                dataSourceFactory = DefaultDataSource.Factory(context)
+            }
+            val mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, cacheKey, context)
+            if (overriddenDuration != 0L) {
+                val clippingMediaSource = ClippingMediaSource(mediaSource, 0, overriddenDuration * 1000)
+                exoPlayer?.setMediaSource(clippingMediaSource)
+            } else {
+                exoPlayer?.setMediaSource(mediaSource)
+            }
+            exoPlayer?.prepare()
+            result.success(null)
 
-        MediaTailor.createSession(sessionConfig) { session, error ->
-            if (error != null) {
-                Log.e(TAG, "Datazoom session error: $error")
-            } else if (session != null) {
-                playerContext?.setupAdSession(session, null, dataSource)
+        }
+
+        MediaTailor.createSession(configBuilder.build()) { session, error ->
+            if (error == null) {
+                onSessionCreationOK(session)
+            }
+            else {
+                onSessionCreationError(error)
             }
         }
-        // --- End of Datazoom Integration ---
-        exoPlayer?.prepare()
-        result.success(null)
+
+
+
+
+
     }
 
     fun setupPlayerNotification(
