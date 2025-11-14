@@ -205,7 +205,8 @@ internal class BetterPlayer(
 
 //          dataZoomDzAdapter = Datazoom.createContext(dzAdaptor)
 
-        dataZoomDzAdapter = datazoom.createContext(exoPlayer, baseContext)
+        dataZoomDzAdapter = Datazoom.createContext(exoPlayer, baseContext)
+//        dataZoomDzAdapter = datazoom.createContext(exoPlayer, baseContext)
         //END MEDIA TAYLOR integration
         
         workManager = WorkManager.getInstance(context)
