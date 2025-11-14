@@ -122,6 +122,8 @@ internal class BetterPlayer(
     customDefaultLoadControl: CustomDefaultLoadControl?,
     result: MethodChannel.Result
 ) {
+    private val TAG = "BetterPlayerConfig"
+
     private val exoPlayer: ExoPlayer?
     private val eventSink = QueuingEventSink()
     private val trackSelector: DefaultTrackSelector = DefaultTrackSelector(context)
@@ -153,17 +155,23 @@ internal class BetterPlayer(
 
 
     init {
+        Log.d(TAG, "Debug: Init State 1")
 
         //START MEDIA TAYLOR integration
         val configId = BuildConfig.DATAZOOM_CONFIG_ID
+        Log.d(TAG, "Debug: Init State 2 configId:")
 
         var oldConfig = Config.Builder(configId)
+        Log.d(TAG, "Debug: Init State 3")
         var newConfig = oldConfig.logLevel(DataZoomLogLevel.VERBOSE)
+        Log.d(TAG, "Debug: Init State 4")
 
        var datazoom =  Datazoom.init(newConfig.build())
+        Log.d(TAG, "Debug: Init State 5")
 
 
         MediaTailor.setLogLevel(MediaTailorLogLevel.DEBUG)
+        Log.d(TAG, "Debug: Init State 6")
 
         //END MEDIA TAYLOR integration
 
@@ -175,12 +183,14 @@ internal class BetterPlayer(
             this.customDefaultLoadControl.bufferForPlaybackMs,
             this.customDefaultLoadControl.bufferForPlaybackAfterRebufferMs
         )
+        Log.d(TAG, "Debug: Init State 7")
         loadControl = loadBuilder.build()
         exoPlayer = ExoPlayer.Builder(context)
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
             .build()
 
+        Log.d(TAG, "Debug: Init State 8")
 
 
         //START MEDIA TAYLOR integration
@@ -193,10 +203,12 @@ internal class BetterPlayer(
 //            setShutterBackgroundColor(color.TRANSPARENT)
             useArtwork = false
         }
+        Log.d(TAG, "Debug: Init State 9")
 
 
 
         var baseContext =  BaseContextFactory.create()
+        Log.d(TAG, "Debug: Init State 10")
 
 //        var dzAdaptor = DzAdapter.DzAdapter(baseContext);
 //        var dzAdaptor = ExtensionsKt.createContext(datazoom,exoPlayer,baseContext);
@@ -204,13 +216,17 @@ internal class BetterPlayer(
 
 //          dataZoomDzAdapter = Datazoom.createContext(dzAdaptor)
 
+
         dataZoomDzAdapter = Datazoom.createContext(exoPlayer, baseContext)
+        Log.d(TAG, "Debug: Init State 11")
+
 //        dataZoomDzAdapter = datazoom.createContext(exoPlayer, baseContext)
         //END MEDIA TAYLOR integration
         
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         setupVideoPlayer(eventChannel, textureEntry, result)
+        Log.d(TAG, "Debug: Init State 12")
     }
 
     fun setDataSource(
@@ -235,8 +251,10 @@ internal class BetterPlayer(
 //        val uri = Uri.parse(dataSource)
 
         //START MEDIA TAYLOR integration
+        Log.d(TAG, "Debug: Init State 13")
 
         var newDataSource = "https://ba55651fa5ec6d94b145a8bbfdd79f02.ieyo6i.channel-assembly.mediatailor.eu-north-1.amazonaws.com/v1/channel/CineShortsNew/germane.m3u8"
+        Log.d(TAG, "Debug: Init State 14")
 
 
 
@@ -244,24 +262,36 @@ internal class BetterPlayer(
 
         var configBuilder = SessionConfiguration.Builder()
             .sessionInitUrl(newDataSource)
+        Log.d(TAG, "Debug: Init State 15")
 
         fun onSessionCreationOK(session: Session) {
+            Log.d(TAG, "Debug: onSessionCreationOK onSessionCreationOK onSessionCreationOK")
+            Log.d(TAG, "Debug: Init State 18")
 
             var usedDataSourceString =  newDataSource
+            Log.d(TAG, "Debug: Init State 18.1")
             if(session.playbackUrl == null){
+                Log.d(TAG, "Debug: Init State 18.1.1")
             }else{
+                Log.d(TAG, "Debug: Init State 18.2")
                 usedDataSourceString = session.playbackUrl!!;
             }
+            Log.d(TAG, "Debug: Init State 18.3")
             if(session == null){
+                Log.d(TAG, "Debug: Init State 18.3.1")
 
             }else{
+                Log.d(TAG, "Debug: Init State 18.4")
                dataZoomDzAdapter!!.setupAdSession(session, playerView!!, usedDataSourceString)
             }
 
-
+            Log.d(TAG, "Debug: Init State 18.5")
             val uri = Uri.parse(usedDataSourceString)
+            Log.d(TAG, "Debug: Init State 18.6")
             var dataSourceFactory: DataSource.Factory?
+            Log.d(TAG, "Debug: Init State 18.7")
             val userAgent = getUserAgent(headers)
+            Log.d(TAG, "Debug: Init State 18.8")
             if (licenseUrl != null && licenseUrl.isNotEmpty()) {
                 val httpMediaDrmCallback =
                     HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
@@ -293,7 +323,8 @@ internal class BetterPlayer(
                             .build(httpMediaDrmCallback)
                     }
                 }
-            } else if (clearKey != null && clearKey.isNotEmpty()) {
+            }
+            else if (clearKey != null && clearKey.isNotEmpty()) {
                 drmSessionManager = if (Util.SDK_INT < 18) {
                     Log.e(TAG, "Protected content not supported on API levels below 18")
                     null
@@ -307,6 +338,7 @@ internal class BetterPlayer(
             } else {
                 drmSessionManager = null
             }
+            Log.d(TAG, "Debug: Init State 18.9")
             if (isHTTP(uri)) {
                 dataSourceFactory = getDataSourceFactory(userAgent, headers)
                 if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
@@ -320,6 +352,7 @@ internal class BetterPlayer(
             } else {
                 dataSourceFactory = DefaultDataSource.Factory(context)
             }
+            Log.d(TAG, "Debug: Init State 18.10")
             val mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, cacheKey, context)
             if (overriddenDuration != 0L) {
                 val clippingMediaSource = ClippingMediaSource(mediaSource, 0, overriddenDuration * 1000)
@@ -327,15 +360,21 @@ internal class BetterPlayer(
             } else {
                 exoPlayer?.setMediaSource(mediaSource)
             }
+            Log.d(TAG, "Debug: Init State 18.11")
             exoPlayer?.prepare()
+            Log.d(TAG, "Debug: Init State 18.12")
             result.success(null)
 
         }
 
         fun onSessionCreationError(error: SessionError) {
+            Log.d(TAG, "Debug: onSessionCreationError onSessionCreationError onSessionCreationError")
+            Log.d(TAG, "Debug: Init State 19.1")
             val uri = Uri.parse(newDataSource)
+            Log.d(TAG, "Debug: Init State 19.2")
             var dataSourceFactory: DataSource.Factory?
             val userAgent = getUserAgent(headers)
+            Log.d(TAG, "Debug: Init State 19.3")
             if (licenseUrl != null && licenseUrl.isNotEmpty()) {
                 val httpMediaDrmCallback =
                     HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
@@ -367,7 +406,8 @@ internal class BetterPlayer(
                             .build(httpMediaDrmCallback)
                     }
                 }
-            } else if (clearKey != null && clearKey.isNotEmpty()) {
+            }
+            else if (clearKey != null && clearKey.isNotEmpty()) {
                 drmSessionManager = if (Util.SDK_INT < 18) {
                     Log.e(TAG, "Protected content not supported on API levels below 18")
                     null
@@ -381,6 +421,8 @@ internal class BetterPlayer(
             } else {
                 drmSessionManager = null
             }
+            Log.d(TAG, "Debug: Init State 19.4")
+
             if (isHTTP(uri)) {
                 dataSourceFactory = getDataSourceFactory(userAgent, headers)
                 if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
@@ -394,6 +436,7 @@ internal class BetterPlayer(
             } else {
                 dataSourceFactory = DefaultDataSource.Factory(context)
             }
+            Log.d(TAG, "Debug: Init State 19.5")
             val mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, cacheKey, context)
             if (overriddenDuration != 0L) {
                 val clippingMediaSource = ClippingMediaSource(mediaSource, 0, overriddenDuration * 1000)
@@ -401,26 +444,38 @@ internal class BetterPlayer(
             } else {
                 exoPlayer?.setMediaSource(mediaSource)
             }
+            Log.d(TAG, "Debug: Init State 19.6")
             exoPlayer?.prepare()
+            Log.d(TAG, "Debug: Init State 19.7")
             result.success(null)
 
         }
 
         MediaTailor.createSession(configBuilder.build()) { session, error ->
+            Log.d(TAG, "Debug: Init State 16")
+
             if (error == null) {
+                Log.d(TAG, "Debug: Init State 17.1")
+
                 if(session == null){
+                    Log.d(TAG, "Debug: Init State 17.2")
 
                 }else{
+                    Log.d(TAG, "Debug: Init State 17")
+
                 onSessionCreationOK(session!!)
                 }
             }
             else {
+                Log.d(TAG, "Debug: Init State 17.0")
+
                 onSessionCreationError(error)
             }
         }
 
 
 
+        Log.d(TAG, "Debug: Init State 20")
 
 
     }
