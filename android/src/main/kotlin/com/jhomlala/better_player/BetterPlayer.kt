@@ -65,50 +65,55 @@ import java.lang.IllegalStateException
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
+
+
+
+
 import io.datazoom.sdk.mediatailor.setupAdSession
 import io.datazoom.sdk.Datazoom
 import io.datazoom.sdk.Config
-// import io.datazoom.sdk.LogLevel
-import io.datazoom.sdk.logs.LogLevel
+
+import com.amazon.mediatailorsdk.logs.LogLevel as MediaTailorLogLevel
+import io.datazoom.sdk.logs.LogLevel as DataZoomLogLevel
+
 import io.datazoom.sdk.mediatailor.*
 // import io.datazoom.sdk.mediatailor.MediaTailor
 
 // import io.datazoom.sdk.mediatailor.SessionConfiguration
-
-import io.datazoom.sdk.BaseContext
-
-import io.datazoom.sdk.DzAdapter
-
 // import io.datazoom.sdk.Datazoom
-// import io.datazoom.sdk.Config
 // import io.datazoom.sdk.mediatailor.BuildConfig
 // import io.datazoom.sdk.mediatailor.MediaTailorKt
-// import io.datazoom.sdk.logs.LogLevel
-// import io.datazoom.sdk.DzAdapter
-// import io.datazoom.sdk.BaseContextFactory
+ // import io.datazoom.sdk.BaseContextFactory
 // import io.datazoom.sdk.BaseContext
 // import io.datazoom.sdk.player.PlayerAdapter
 // import io.datazoom.sdk.player.DzPlayer
 
 // import android.view.View
 
-// import com.amazon.mediatailorsdk.SessionConfiguration
+ import com.amazon.mediatailorsdk.SessionConfiguration
 // import com.amazon.mediatailorsdk.MediaTailorCommon
-// import com.amazon.mediatailorsdk.MediaTailor
-// import com.amazon.mediatailorsdk.Session
-// import com.amazon.mediatailorsdk.SessionError
+ import com.amazon.mediatailorsdk.MediaTailor
+ import com.amazon.mediatailorsdk.Session
+ import com.amazon.mediatailorsdk.SessionError
 // import com.amazon.mediatailorsdk.setupAdSession
 
 
 
-import kotlin.jvm.functions.Function2;
-import kotlin.Unit;
+import kotlin.jvm.functions.Function2
+import kotlin.Unit
 
 
 import com.google.android.exoplayer2.ui.PlayerView
+import com.google.android.exoplayer2.ui.R.color
 
 
-
+import io.datazoom.sdk.BaseContextFactory
+import io.datazoom.sdk.BaseContext
+import io.datazoom.sdk.DzAdapter
+//import io.datazoom.sdk.exoplayer.ExtensionsKt
+import io.datazoom.sdk.exoplayer.*
+import io.datazoom.sdk.exoplayer.createContext // Extension function import
+import io.datazoom.sdk.exoplayer.ExoPlayerImpl // If needed for manual approach
 
 
 internal class BetterPlayer(
@@ -140,9 +145,9 @@ internal class BetterPlayer(
 
 
     //START MEDIA TAYLOR integration
-    private val adapter: DzAdapter? = null
 
-    private val  playerView: PlayerView
+    private var dataZoomDzAdapter: DzAdapter? = null
+    private var playerView: PlayerView? = null
 
     //END MEDIA TAYLOR integration
 
@@ -152,24 +157,14 @@ internal class BetterPlayer(
 
         //START MEDIA TAYLOR integration
         val configId = BuildConfig.DATAZOOM_CONFIG_ID
-//        Datazoom.init(
-//            build(
-//                configurationId = configId,
-//                block = {
-//                    logLevel(LogLevel.VERBOSE)
-//                }
-//            )
-//        )
-        Datazoom.init(
-            build(
-                configurationId = configId,
-                {
-                    logLevel(LogLevel.VERBOSE)
-                }
-            )
-        )
-        MediaTailor.setLogLevel(LogLevel.DEBUG)
 
+        var oldConfig = Config.Builder(configId)
+        var newConfig = oldConfig.logLevel(DataZoomLogLevel.VERBOSE)
+
+       var datazoom =  Datazoom.init(newConfig.build())
+
+
+        MediaTailor.setLogLevel(MediaTailorLogLevel.DEBUG)
 
         //END MEDIA TAYLOR integration
 
@@ -193,14 +188,24 @@ internal class BetterPlayer(
         playerView = PlayerView(context).apply {
             useController = false
             player = exoPlayer
-            visibility = View.GONE // hide if Flutter renders video via texture
+//            visibility = View.GONE // hide if Flutter renders video via texture
+
+            // Additional optimizations
+//            setShutterBackgroundColor(color.TRANSPARENT)
+            useArtwork = false
         }
 
 
 
+        var baseContext =  BaseContextFactory.create()
 
-        adapter = Datazoom.createContext(exoPlayer)
+//        var dzAdaptor = DzAdapter.DzAdapter(baseContext);
+//        var dzAdaptor = ExtensionsKt.createContext(datazoom,exoPlayer,baseContext);
+//        val dzAdapter = datazoom.createContext(exoPlayer, baseContext)
 
+//          dataZoomDzAdapter = Datazoom.createContext(dzAdaptor)
+
+        dataZoomDzAdapter = datazoom.createContext(exoPlayer, baseContext)
         //END MEDIA TAYLOR integration
         
         workManager = WorkManager.getInstance(context)
@@ -231,21 +236,30 @@ internal class BetterPlayer(
 
         //START MEDIA TAYLOR integration
 
-        val newDataSource = "https://ba55651fa5ec6d94b145a8bbfdd79f02.ieyo6i.channel-assembly.mediatailor.eu-north-1.amazonaws.com/v1/channel/CineShortsNew/germane.m3u8"
+        var newDataSource = "https://ba55651fa5ec6d94b145a8bbfdd79f02.ieyo6i.channel-assembly.mediatailor.eu-north-1.amazonaws.com/v1/channel/CineShortsNew/germane.m3u8"
 
 
 
 
 
-        val configBuilder = SessionConfiguration.Builder()
+        var configBuilder = SessionConfiguration.Builder()
             .sessionInitUrl(newDataSource)
 
         fun onSessionCreationOK(session: Session) {
 
-            adapter.setupAdSession(session, playerView, session.playbackUrl)
+            var usedDataSourceString =  newDataSource
+            if(session.playbackUrl == null){
+            }else{
+                usedDataSourceString = session.playbackUrl!!;
+            }
+            if(session == null){
+
+            }else{
+               dataZoomDzAdapter!!.setupAdSession(session, playerView!!, usedDataSourceString)
+            }
 
 
-            val uri = Uri.parse(session.playbackUrl)
+            val uri = Uri.parse(usedDataSourceString)
             var dataSourceFactory: DataSource.Factory?
             val userAgent = getUserAgent(headers)
             if (licenseUrl != null && licenseUrl.isNotEmpty()) {
@@ -394,7 +408,11 @@ internal class BetterPlayer(
 
         MediaTailor.createSession(configBuilder.build()) { session, error ->
             if (error == null) {
-                onSessionCreationOK(session)
+                if(session == null){
+
+                }else{
+                onSessionCreationOK(session!!)
+                }
             }
             else {
                 onSessionCreationError(error)
