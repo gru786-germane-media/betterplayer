@@ -66,15 +66,44 @@ import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 import io.datazoom.sdk.mediatailor.setupAdSession
-import io.datazoom.sdk.base.Datazoom
-import io.datazoom.sdk.base.Config
-import io.datazoom.sdk.base.LogLevel
-import io.datazoom.sdk.mediatailor.MediaTailor
-import io.datazoom.sdk.mediatailor.SessionConfiguration
-import io.datazoom.sdk.mediatailor.setupAdSession
-import io.datazoom.sdk.BaseContext
 import io.datazoom.sdk.Datazoom
+import io.datazoom.sdk.Config
+// import io.datazoom.sdk.LogLevel
+import io.datazoom.sdk.logs.LogLevel
+import io.datazoom.sdk.mediatailor.*
+// import io.datazoom.sdk.mediatailor.MediaTailor
+
+// import io.datazoom.sdk.mediatailor.SessionConfiguration
+
+import io.datazoom.sdk.BaseContext
+
 import io.datazoom.sdk.DzAdapter
+
+// import io.datazoom.sdk.Datazoom
+// import io.datazoom.sdk.Config
+// import io.datazoom.sdk.mediatailor.BuildConfig
+// import io.datazoom.sdk.mediatailor.MediaTailorKt
+// import io.datazoom.sdk.logs.LogLevel
+// import io.datazoom.sdk.DzAdapter
+// import io.datazoom.sdk.BaseContextFactory
+// import io.datazoom.sdk.BaseContext
+// import io.datazoom.sdk.player.PlayerAdapter
+// import io.datazoom.sdk.player.DzPlayer
+
+// import android.view.View
+
+// import com.amazon.mediatailorsdk.SessionConfiguration
+// import com.amazon.mediatailorsdk.MediaTailorCommon
+// import com.amazon.mediatailorsdk.MediaTailor
+// import com.amazon.mediatailorsdk.Session
+// import com.amazon.mediatailorsdk.SessionError
+// import com.amazon.mediatailorsdk.setupAdSession
+
+
+
+import kotlin.jvm.functions.Function2;
+import kotlin.Unit;
+
 
 import com.google.android.exoplayer2.ui.PlayerView
 

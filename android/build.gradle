@@ -76,6 +76,8 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
 
     // Datazoom
-    implementation 'io.datazoom.sdk:base-android:4.1.18'
-    implementation 'io.datazoom.sdk:mediatailor:0.0.18'
+    implementation "io.datazoom.sdk:base-android:4.1.18"
+    implementation "io.datazoom.sdk:mediatailor:0.0.19"
+//    implementation "io.datazoom.mediatailorsdk:mediatailorsdk-android:1.0.3"
+    implementation("io.datazoom.sdk:exoplayer:0.0.12")
 }
