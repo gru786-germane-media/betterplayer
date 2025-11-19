@@ -110,6 +110,7 @@ import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.ui.R.color
 
 
+import io.datazoom.sdk.*;
 import io.datazoom.sdk.BaseContextFactory
 import io.datazoom.sdk.BaseContext
 import io.datazoom.sdk.DzAdapter
@@ -165,6 +166,13 @@ internal class BetterPlayer(
     init {
         Log.d(TAG, "Debug: Init State 1")
 
+        Log.d(TAG, "Debug: Will get networkInfoData")
+
+        var info = getNetworkInfo();
+        Log.d(TAG, "Debug: result networkInfoData :")
+
+        // Print full session details
+        printObjectDetails(info, "getNetworkInfo()")
         //START MEDIA TAYLOR integration
         val configId = BuildConfig.DATAZOOM_CONFIG_ID
         var baseContext =  BaseContextFactory.create()
@@ -299,8 +307,6 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
         Log.d(TAG, "Debug: Init State 13")
 
         var newDataSource =
-            //"https://c5n2b3s7.ssl.hwcdn.net/linear/amazon-cloud-front-cdn-video-sample-1-min-clean/amazon-cloud-front-cdn-video-sample-1-min-clean.m3u8"
-            // "https://ba55651fa5ec6d94b145a8bbfdd79f02.ieyo6i.channel-assembly.mediatailor.eu-north-1.amazonaws.com/v1/channel/CineShortsNew/germane.m3u8"
             "https://6e257b305cad46efb629942e423818a9.mediatailor.ap-south-1.amazonaws.com/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/comedy_king/OTM/OTM_ComedyKing-SCTE_SWIFT/playlist.m3u8"
         Log.d(TAG, "Debug: Init State 14")
 
