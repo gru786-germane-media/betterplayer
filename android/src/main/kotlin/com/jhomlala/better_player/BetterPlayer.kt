@@ -94,8 +94,11 @@ import io.datazoom.sdk.mediatailor.*
 // import com.amazon.mediatailorsdk.MediaTailorCommon
  import com.amazon.mediatailorsdk.MediaTailor
  import com.amazon.mediatailorsdk.Session
+ import com.amazon.mediatailorsdk.SessionCommon
  import com.amazon.mediatailorsdk.SessionError
 // import com.amazon.mediatailorsdk.setupAdSession
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
 
 
 
@@ -113,7 +116,10 @@ import io.datazoom.sdk.DzAdapter
 //import io.datazoom.sdk.exoplayer.ExtensionsKt
 import io.datazoom.sdk.exoplayer.*
 import io.datazoom.sdk.exoplayer.createContext // Extension function import
+import io.datazoom.sdk.SdkEvent
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
 
 internal class BetterPlayer(
     context: Context,
@@ -150,6 +156,8 @@ internal class BetterPlayer(
     private var dataZoomDzAdapter: DzAdapter? = null
     private var playerView: PlayerView? = null
 
+
+
     //END MEDIA TAYLOR integration
 
 
@@ -159,14 +167,18 @@ internal class BetterPlayer(
 
         //START MEDIA TAYLOR integration
         val configId = BuildConfig.DATAZOOM_CONFIG_ID
+        var baseContext =  BaseContextFactory.create()
         Log.d(TAG, "Debug: Init State 2 configId:")
 
         var oldConfig = Config.Builder(configId)
         Log.d(TAG, "Debug: Init State 3")
         var newConfig = oldConfig.logLevel(DataZoomLogLevel.VERBOSE)
+        var newConfig2 = newConfig.build()
         Log.d(TAG, "Debug: Init State 4")
+        var datazoom =  Datazoom.init(newConfig2)
 
-       var datazoom =  Datazoom.init(newConfig.build())
+
+//       var datazoom =  Datazoom.init(newConfig.build())
         Log.d(TAG, "Debug: Init State 5")
 
 
@@ -207,7 +219,7 @@ internal class BetterPlayer(
 
 
 
-        var baseContext =  BaseContextFactory.create()
+
         Log.d(TAG, "Debug: Init State 10")
 
 //        var dzAdaptor = DzAdapter.DzAdapter(baseContext);
@@ -229,6 +241,38 @@ internal class BetterPlayer(
         Log.d(TAG, "Debug: Init State 12")
     }
 
+fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
+    try {
+        val sb = StringBuilder()
+        sb.append("\n=== ${obj.javaClass.simpleName} Details ===\n")
+        
+        var currentClass: Class<*>? = obj.javaClass
+        while (currentClass != null && currentClass != Any::class.java) {
+            sb.append("Class: ${currentClass.name}\n")
+            
+            val fields = currentClass.declaredFields
+            for (field in fields) {
+                // Skip static fields
+                if (Modifier.isStatic(field.modifiers)) continue
+                
+                field.isAccessible = true
+                try {
+                    val value = field.get(obj)
+                    sb.append("  ${field.name}: ${value}\n")
+                } catch (e: Exception) {
+                    sb.append("  ${field.name}: [Error accessing: ${e.message}]\n")
+                }
+            }
+            sb.append("----------------------------\n")
+            currentClass = currentClass.superclass
+        }
+        
+        Log.d(tag, sb.toString())
+    } catch (e: Exception) {
+        Log.e(tag, "Error printing object details: ${e.message}")
+    }
+}
+
     fun setDataSource(
         context: Context,
         key: String?,
@@ -248,12 +292,16 @@ internal class BetterPlayer(
         this.key = key
         isInitialized = false
 
+
 //        val uri = Uri.parse(dataSource)
 
         //START MEDIA TAYLOR integration
         Log.d(TAG, "Debug: Init State 13")
 
-        var newDataSource = "https://ba55651fa5ec6d94b145a8bbfdd79f02.ieyo6i.channel-assembly.mediatailor.eu-north-1.amazonaws.com/v1/channel/CineShortsNew/germane.m3u8"
+        var newDataSource =
+            //"https://c5n2b3s7.ssl.hwcdn.net/linear/amazon-cloud-front-cdn-video-sample-1-min-clean/amazon-cloud-front-cdn-video-sample-1-min-clean.m3u8"
+            // "https://ba55651fa5ec6d94b145a8bbfdd79f02.ieyo6i.channel-assembly.mediatailor.eu-north-1.amazonaws.com/v1/channel/CineShortsNew/germane.m3u8"
+            "https://6e257b305cad46efb629942e423818a9.mediatailor.ap-south-1.amazonaws.com/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/comedy_king/OTM/OTM_ComedyKing-SCTE_SWIFT/playlist.m3u8"
         Log.d(TAG, "Debug: Init State 14")
 
 
@@ -267,6 +315,14 @@ internal class BetterPlayer(
         fun onSessionCreationOK(session: Session) {
             Log.d(TAG, "Debug: onSessionCreationOK onSessionCreationOK onSessionCreationOK")
             Log.d(TAG, "Debug: Init State 18")
+
+    // Print full session details
+    printObjectDetails(session, "SessionDebug")
+                //val  getPlaybackUrl = session.getPlaybackUrl
+            //val  getTrackingUrl = session.getTrackingUrl
+            
+            //Log.d(TAG, "Playback URL: ${getPlaybackUrl}")
+            //Log.d(TAG, "Tracking URL: ${getTrackingUrl}")
 
             var usedDataSourceString =  newDataSource
             Log.d(TAG, "Debug: Init State 18.1")
@@ -368,7 +424,16 @@ internal class BetterPlayer(
         }
 
         fun onSessionCreationError(error: SessionError) {
-            Log.d(TAG, "Debug: onSessionCreationError onSessionCreationError onSessionCreationError")
+            Log.d(TAG, "Debug: onSessionCreationError onSessionCreationError onSessionCreationError") 
+         
+
+        // Print error details too
+        printObjectDetails(error, "SessionError")         
+         //   val  getCode = error.getCode
+           // val  getMessage = error.getMessage
+            
+           // Log.d(TAG, "Error getCode: ${getCode}")
+           // Log.d(TAG, "Error getMessage: ${getMessage}")
             Log.d(TAG, "Debug: Init State 19.1")
             val uri = Uri.parse(newDataSource)
             Log.d(TAG, "Debug: Init State 19.2")
