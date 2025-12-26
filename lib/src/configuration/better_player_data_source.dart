@@ -23,6 +23,9 @@ class BetterPlayerDataSource {
   ///Flag to determine if current data source is live stream
   final bool? liveStream;
 
+  //Flag to determine if we will use SSAI rom MediaTailor or use Normal call
+  final bool? shouldEnableSSAI;
+
   /// Custom headers for player
   final Map<String, String>? headers;
 
@@ -78,10 +81,11 @@ class BetterPlayerDataSource {
 
   BetterPlayerDataSource(
     this.type,
-    this.url, {
+    this.url, { 
     this.bytes,
     this.subtitles,
     this.liveStream = false,
+    this.shouldEnableSSAI = false,
     this.headers,
     this.useAsmsSubtitles = true,
     this.useAsmsTracks = true,
@@ -112,6 +116,7 @@ class BetterPlayerDataSource {
     String url, {
     List<BetterPlayerSubtitlesSource>? subtitles,
     bool? liveStream,
+    bool? shouldEnableSSAI,
     Map<String, String>? headers,
     bool? useAsmsSubtitles,
     bool? useAsmsTracks,
@@ -132,6 +137,7 @@ class BetterPlayerDataSource {
       url,
       subtitles: subtitles,
       liveStream: liveStream,
+      shouldEnableSSAI: shouldEnableSSAI,
       headers: headers,
       useAsmsSubtitles: useAsmsSubtitles,
       useAsmsTracks: useAsmsTracks,
@@ -212,6 +218,7 @@ class BetterPlayerDataSource {
     List<int>? bytes,
     List<BetterPlayerSubtitlesSource>? subtitles,
     bool? liveStream,
+    bool? shouldEnableSSAI,
     Map<String, String>? headers,
     bool? useAsmsSubtitles,
     bool? useAsmsTracks,
@@ -234,6 +241,7 @@ class BetterPlayerDataSource {
       bytes: bytes ?? this.bytes,
       subtitles: subtitles ?? this.subtitles,
       liveStream: liveStream ?? this.liveStream,
+      shouldEnableSSAI: shouldEnableSSAI ?? this.shouldEnableSSAI,
       headers: headers ?? this.headers,
       useAsmsSubtitles: useAsmsSubtitles ?? this.useAsmsSubtitles,
       useAsmsTracks: useAsmsTracks ?? this.useAsmsTracks,

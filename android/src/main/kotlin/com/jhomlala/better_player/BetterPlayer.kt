@@ -122,6 +122,13 @@ import io.datazoom.sdk.SdkEvent
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
 
+
+import com.amazon.mediatailorsdk.PalConsentSettings
+
+import android.content.*;
+import com.amazon.mediatailorsdk.PalNonceRequestParams;
+
+
 internal class BetterPlayer(
     context: Context,
     private val eventChannel: EventChannel,
@@ -153,6 +160,8 @@ internal class BetterPlayer(
 
 
     //START MEDIA TAYLOR integration
+
+
 
     private var dataZoomDzAdapter: DzAdapter? = null
     private var playerView: PlayerView? = null
@@ -307,9 +316,38 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
         Log.d(TAG, "Debug: Init State 13")
 
         var newDataSource =
-            "https://6e257b305cad46efb629942e423818a9.mediatailor.ap-south-1.amazonaws.com/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/comedy_king/OTM/OTM_ComedyKing-SCTE_SWIFT/playlist.m3u8"
+        //new url delivered on 20th dec
+         "https://dfqqzowu2qhqt.cloudfront.net/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/vast-ad-tag-issue-2/v1/channel/testChannel2/germane.m3u8";
+
+
+        //new url for testing has 2 min ads after every 2 min
+        //"https://ddr77abvwj7xa.cloudfront.net/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/vast-ad-tag-issue/v1/channel/testChannel/germane.m3u8";
+            // "https://6e257b305cad46efb629942e423818a9.mediatailor.ap-south-1.amazonaws.com/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/comedy_king/OTM/OTM_ComedyKing-SCTE_SWIFT/playlist.m3u8"
         Log.d(TAG, "Debug: Init State 14")
 
+
+
+        val palConsentSettings = PalConsentSettings.Builder()
+            .allowStorage(true) // Note that this value must be based on user consents
+            .directedForChildOrUnknownAge(false)
+            .build()
+
+        MediaTailor.initPal(context.applicationContext, palConsentSettings)
+
+
+        val palNonceRequestParams = PalNonceRequestParams.Builder()
+            .adWillAutoPlay(true)
+            .adWillPlayMuted(false)
+            .descriptionUrl("https://playswift.tv")
+            .iconsSupported(true)
+            .playerType("ExoPlayer")
+            .playerVersion("0.0.12")
+            .ppid("12345")
+            .videoHeight(1080)
+            .videoWidth(1920)
+            .omidPartnerName("amazon2")
+            .omidPartnerVersion("1.0.0")
+            .build()
 
 
 
@@ -317,6 +355,7 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
         var configBuilder = SessionConfiguration.Builder()
             .sessionInitUrl(newDataSource)
         Log.d(TAG, "Debug: Init State 15")
+        configBuilder.palNonceRequestParams(palNonceRequestParams)
 
         fun onSessionCreationOK(session: Session) {
             Log.d(TAG, "Debug: onSessionCreationOK onSessionCreationOK onSessionCreationOK")

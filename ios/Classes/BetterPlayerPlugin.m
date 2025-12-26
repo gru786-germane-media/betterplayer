@@ -4,6 +4,8 @@
 
 #import "BetterPlayerPlugin.h"
 #import <better_player/better_player-Swift.h>
+#import <DzBase/DzBase.h>  // Add Datazoom import
+#import <Foundation/Foundation.h>
 
 #if !__has_feature(objc_arc)
 #error Code Requires ARC.
@@ -28,6 +30,44 @@ bool _remoteCommandsInitialized = false;
     BetterPlayerPlugin* instance = [[BetterPlayerPlugin alloc] initWithRegistrar:registrar];
     [registrar addMethodCallDelegate:instance channel:channel];
     //[registrar publish:instance];
+
+    // ======== CORRECT DATAZOOM INIT ========
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        static NSString *const DATAZOOM_CONFIG_ID = @"9c1f222a-49ca-4933-8072-c4eb6675ece4";
+                NSLog(@"[BetterPlayer] Datazoom SDK init started.");  
+
+        // 1. Create config builder
+        DzBaseConfigBuilder *configBuilder = [[DzBaseConfigBuilder alloc] 
+            initWithConfigurationId:DATAZOOM_CONFIG_ID];
+                NSLog(@"[BetterPlayer] Datazoom SDK init 2.");  
+
+        // 2. Set properties
+        [configBuilder logLevelLogLevel:DzBaseLogLevel.verbose];
+        [configBuilder isProductionIsProduction:NO];
+                NSLog(@"[BetterPlayer] Datazoom SDK init 3.");  
+
+        // 3. Build final config
+        DzBaseConfig *config = [configBuilder build];
+                NSLog(@"[BetterPlayer] Datazoom SDK init 4.");  
+
+        // 4. Initialize SDK with CORRECT METHOD NAME
+        [[DzBaseDatazoom shared] doInitConfig:config];  // ← CORRECT!
+             NSLog(@"[BetterPlayer] Datazoom SDK init 5.");  
+   
+        // Optional: Verify initialization
+        if ([[DzBaseDatazoom shared] isInitialized]) {
+            NSLog(@"[BetterPlayer] Datazoom SDK v%@ initialized successfully", 
+                  [[DzBaseDatazoom shared] version]);
+        }
+    });
+    // ======== END DATAZOOM ========
+
+ 
+    
+
+
+
     [registrar registerViewFactory:instance withId:@"com.jhomlala/better_player"];
 }
 
@@ -325,6 +365,13 @@ bool _remoteCommandsInitialized = false;
                 }
             }
 
+            // Extract shouldEnableSSAI from dataSource dictionary
+            BOOL shouldEnableSSAI = NO;
+            id ssaiObject = dataSource[@"shouldEnableSSAI"];
+            if (ssaiObject != nil && ssaiObject != [NSNull null]) {
+                shouldEnableSSAI = [ssaiObject boolValue];
+            }
+
             if (headers == [NSNull null] || headers == NULL){
                 headers = @{};
             }
@@ -339,8 +386,18 @@ bool _remoteCommandsInitialized = false;
                 }
                 [player setDataSourceAsset:assetPath withKey:key withCertificateUrl:certificateUrl withLicenseUrl: licenseUrl cacheKey:cacheKey cacheManager:_cacheManager overriddenDuration:overriddenDuration];
             } else if (uriArg) {
-                [player setDataSourceURL:[NSURL URLWithString:uriArg] withKey:key withCertificateUrl:certificateUrl withLicenseUrl: licenseUrl withHeaders:headers withCache: useCache cacheKey:cacheKey cacheManager:_cacheManager overriddenDuration:overriddenDuration videoExtension: videoExtension];
-            } else {
+                        [player setDataSourceURL:[NSURL URLWithString:uriArg] 
+                                        withKey:key 
+                                withLicenseUrl:licenseUrl 
+                            withCertificateUrl:certificateUrl 
+                                withCacheKey:cacheKey 
+                            withVideoExtension:videoExtension 
+                                    withHeaders:headers 
+                                    withCache:useCache 
+                                cacheManager:_cacheManager 
+                            overriddenDuration:overriddenDuration
+                            shouldEnableSSAI:shouldEnableSSAI];
+                   } else {
                 result(FlutterMethodNotImplemented);
             }
             result(nil);

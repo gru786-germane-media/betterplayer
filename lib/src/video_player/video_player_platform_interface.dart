@@ -227,6 +227,7 @@ class DataSource {
     this.activityName,
     this.clearKey,
     this.videoExtension,
+    this.shouldEnableSSAI = false,
   }) : assert(uri == null || asset == null);
 
   /// Describes the type of data source this [VideoPlayerController]
@@ -274,6 +275,8 @@ class DataSource {
   final Map<String, String?>? headers;
 
   final bool useCache;
+
+  final bool shouldEnableSSAI;
 
   final int? maxCacheSize;
 
@@ -328,7 +331,7 @@ class DataSource {
   String toString() {
     return 'DataSource{sourceType: $sourceType, uri: $uri certificateUrl: $certificateUrl, formatHint:'
         ' $formatHint, asset: $asset, package: $package, headers: $headers,'
-        ' useCache: $useCache,maxCacheSize: $maxCacheSize, maxCacheFileSize: '
+        ' useCache: $useCache,shouldEnableSSAI: $shouldEnableSSAI,maxCacheSize: $maxCacheSize, maxCacheFileSize: '
         '$maxCacheFileSize, showNotification: $showNotification, title: $title,'
         ' author: $author}';
   }
