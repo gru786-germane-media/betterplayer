@@ -1,11 +1,3 @@
-// BetterPlayer-Bridging-Header.h
+// ONLY your existing headers - NO DataZoom imports
 #import "BetterPlayer.h"
 #import "BetterPlayerEzDrmAssetsLoaderDelegate.h"
-
-// DataZoom imports
-#import <DzBase/DzBase.h>
-#import <DzAVPlayerAdapter/DzAVPlayerAdapter.h>
-#import <DzMediaTailorAdapter/DzMediaTailorAdapter.h>
-
-// MediaTailor imports
-#import <MediaTailorSdk/MediaTailorSdk.h>

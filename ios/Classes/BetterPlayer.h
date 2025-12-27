@@ -10,12 +10,13 @@
 #import "BetterPlayerTimeUtils.h"
 #import "BetterPlayerView.h"
 #import "BetterPlayerEzDrmAssetsLoaderDelegate.h"
+#import <better_player/better_player-Swift.h>
 
 // Add Datazoom imports
-#import <DzBase/DzBase.h>
-#import <DzAVPlayerAdapter/DzAVPlayerAdapter.h>  // For AVPlayer tracking
-#import <DzMediaTailorAdapter/DzMediaTailorAdapter.h>  // For MediaTailor ads
-#import <MediaTailorSdk/MediaTailorSdk.h>  // For MediaTailorSdk
+// #import <DzBase/DzBase.h>
+// #import <DzAVPlayerAdapter/DzAVPlayerAdapter.h>  // For AVPlayer tracking
+// #import <DzMediaTailorAdapter/DzMediaTailorAdapter.h>  // For MediaTailor ads
+//#import <MediaTailorSdk/MediaTailorSdk.h>  // For MediaTailorSdk
 NS_ASSUME_NONNULL_BEGIN
 
 @class CacheManager;
