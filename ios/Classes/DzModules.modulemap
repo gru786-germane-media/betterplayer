@@ -1,0 +1,25 @@
+framework module DzModules {
+  // Re-export DataZoom modules
+  export DzBase
+  export DzAVPlayerAdapter
+  export DzMediaTailorAdapter
+  
+  // Explicit module declarations
+  module DzBase {
+    header "/DzBase/DzBase.h"
+    link "DzBase"
+  }
+  
+  module DzAVPlayerAdapter {
+    header "/DzAVPlayerAdapter/DzAVPlayerAdapter.h"
+    link "DzAVPlayerAdapter"
+    export DzBase
+  }
+  
+  module DzMediaTailorAdapter {
+    header "/DzMediaTailorAdapter/DzMediaTailorAdapter.h"
+    link "DzMediaTailorAdapter"
+    export DzBase
+    export DzAVPlayerAdapter
+  }
+}
