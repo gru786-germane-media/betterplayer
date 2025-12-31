@@ -50,8 +50,6 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     private var pipHandler: Handler? = null
     private var pipRunnable: Runnable? = null
 
-    // Datazoom related properties
-    private var datazoomInstance: Datazoom? = null
     private var baseContext: BaseContext? = null
     private var isDatazoomInitialized = false
 
@@ -95,7 +93,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                     .logLevel(DataZoomLogLevel.VERBOSE)
                     .build()
 
-                datazoomInstance = Datazoom.init(config)
+                Datazoom.init(config)
 
                 // Initialize MediaTailor logging
                 MediaTailor.setLogLevel(MediaTailorLogLevel.DEBUG)
@@ -114,11 +112,6 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 Log.e(TAG, "Failed to initialize Datazoom: ${e.message}", e)
             }
         }
-    }
-
-    // Method to get Datazoom context for BetterPlayer instances
-    fun getDatazoomContext(): Pair<BaseContext?, Datazoom?> {
-        return Pair(baseContext, datazoomInstance)
     }
 
     override fun onDetachedFromEngine(binding: FlutterPluginBinding) {

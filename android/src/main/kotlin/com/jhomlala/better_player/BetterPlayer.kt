@@ -171,15 +171,9 @@ internal class BetterPlayer(
 
     private fun initializeDatazoomAdapter(context: Context) {
         try {
-            // Get Datazoom context from plugin
-            val (baseContext, datazoomInstance) = plugin?.getDatazoomContext() ?: Pair(null, null)
-
-            if (baseContext != null && datazoomInstance != null && exoPlayer != null) {
-                dataZoomDzAdapter = Datazoom.createContext(exoPlayer, baseContext)
+                 var baseContext =  BaseContextFactory.create()
+                dataZoomDzAdapter = Datazoom.createContext(exoPlayer!!,baseContext)
                 Log.d(TAG, "Debug: Datazoom adapter initialized successfully")
-            } else {
-                Log.w(TAG, "Debug: Datazoom not initialized or context not available")
-            }
         } catch (e: Exception) {
             Log.e(TAG, "Debug: Failed to initialize Datazoom adapter: ${e.message}", e)
         }
