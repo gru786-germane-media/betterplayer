@@ -30,7 +30,6 @@ Better Player plugin with Datazoom analytics and AWS MediaTailor SSAI support.
   # DataZoom dependencies
   s.dependency 'DzAVPlayerAdapter'  # This brings DzBase automatically
   s.dependency 'DzMediaTailorAdapter'
-  s.dependency 'MediaTailorSDK'
 
   # Platform
   s.platform = :ios, '13.0'
