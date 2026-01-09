@@ -10,20 +10,17 @@
 #import "BetterPlayerTimeUtils.h"
 #import "BetterPlayerView.h"
 #import "BetterPlayerEzDrmAssetsLoaderDelegate.h"
+#import "DataZoomSwiftBridge.h"  // ✅ ADDED
 
 // Add Datazoom imports
 #import <DzBase/DzBase.h>
 
-#import <DzMediaTailorAdapter/DzMediaTailorAdapter.h>
+//#import <DzMediaTailorAdapter/DzMediaTailorAdapter.h>
 // #import <MediaTailorSDK/MediaTailorSDK.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @class CacheManager;
-
-// Forward declarations for Swift classes (they will be available via Swift bridge)
-@class DataZoomBridge;  // Our Swift bridge class
-
 
 @interface BetterPlayer : NSObject <FlutterPlatformView, FlutterStreamHandler, AVPictureInPictureControllerDelegate>
 @property(readonly, nonatomic) AVPlayer* player;
@@ -49,7 +46,7 @@ NS_ASSUME_NONNULL_BEGIN
 // ============================================
 // NEW PROPERTIES FOR DATAZOOM/SSAI INTEGRATION
 // ============================================
-@property(nonatomic, strong) DzBaseDzAdapter* datazoomAdapter; // ✅ CORRECT TYPE
+@property(nonatomic, strong, nullable) id datazoomAdapter; // ✅ CHANGED TO 'id' type
 
 // ============================================
 // EXISTING PLAYER METHODS
@@ -67,16 +64,16 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setDataSourceAsset:(NSString*)asset withKey:(NSString*)key withCertificateUrl:(NSString*)certificateUrl withLicenseUrl:(NSString*)licenseUrl cacheKey:(NSString*)cacheKey cacheManager:(CacheManager*)cacheManager overriddenDuration:(int) overriddenDuration;
 
 // ✅ SINGLE CORRECT DECLARATION (REMOVED DUPLICATE)
-- (void)setDataSourceURL:(NSURL*)url 
-             withKey:(NSString*)key          
-          withLicenseUrl:(NSString*)licenseUrl 
-     withCertificateUrl:(NSString*)certificateUrl 
-           withCacheKey:(NSString*)cacheKey 
-     withVideoExtension:(NSString*)videoExtension 
-            withHeaders:(NSDictionary*)headers 
-            withCache:(BOOL)useCache 
-         cacheManager:(CacheManager*)cacheManager 
-     overriddenDuration:(int)overriddenDuration
+- (void)setDataSourceURL:(NSURL*)url
+                 withKey:(NSString*)key
+          withLicenseUrl:(NSString*)licenseUrl
+      withCertificateUrl:(NSString*)certificateUrl
+            withCacheKey:(NSString*)cacheKey
+      withVideoExtension:(NSString*)videoExtension
+             withHeaders:(NSDictionary*)headers
+               withCache:(BOOL)useCache
+            cacheManager:(CacheManager*)cacheManager
+      overriddenDuration:(int)overriddenDuration
         shouldEnableSSAI:(BOOL)shouldEnableSSAI;
 
 - (void)setVolume:(double)volume;
@@ -97,15 +94,15 @@ NS_ASSUME_NONNULL_BEGIN
 // PLAYER SETUP FUNCTIONS (MISSING IN YOUR .h)
 // ============================================
 - (void)setupRegularPlayerWithURL:(NSURL*)url
-                      withKey:(NSString*)key   
-                  withLicenseUrl:(NSURL*)licenseUrl 
-             withCertificateUrl:(NSURL*)certificateUrl 
-                   withCacheKey:(NSString*)cacheKey 
-             withVideoExtension:(NSString*)videoExtension 
-                    withHeaders:(NSDictionary*)headers 
-                     withCache:(BOOL)useCache 
-                  cacheManager:(CacheManager*)cacheManager 
-              overriddenDuration:(int)overriddenDuration;
+                          withKey:(NSString*)key
+                   withLicenseUrl:(NSURL*)licenseUrl
+               withCertificateUrl:(NSURL*)certificateUrl
+                     withCacheKey:(NSString*)cacheKey
+               withVideoExtension:(NSString*)videoExtension
+                      withHeaders:(NSDictionary*)headers
+                        withCache:(BOOL)useCache
+                     cacheManager:(CacheManager*)cacheManager
+               overriddenDuration:(int)overriddenDuration;
 
 - (void)setupPlayerWithItem:(AVPlayerItem*)item key:(NSString*)key;
 
@@ -113,72 +110,77 @@ NS_ASSUME_NONNULL_BEGIN
 // DATAZOOM INTEGRATION FUNCTIONS
 // ============================================
 - (void)setupDatazoomWithPlayer:(AVPlayer *)player; // ✅ REPLACES attachPlayerToDatazoom
-- (void)linkMediaTailorSessionToDatazoom:(MTSDKSession *)session 
-                            originalURL:(NSString *)originalURLString;
-- (void)setSSAIMetadataWithOriginalURL:(NSString *)originalURL 
-                          playbackURL:(NSString *)playbackURL 
-                            sessionId:(NSString *)sessionId;
+- (void)linkMediaTailorSessionToDatazoom:(MTSDKSession *)session
+                             originalURL:(NSString *)originalURLString;
+- (void)setSSAIMetadataWithOriginalURL:(NSString *)originalURL
+                           playbackURL:(NSString *)playbackURL
+                             sessionId:(NSString *)sessionId;
 
 // ============================================
 // MEDIATAILOR SDK FUNCTIONS
 // ============================================
 - (void)initializeMediaTailorSDK;
 - (MTSDKPalNonceRequestParams *)createPalNonceRequestParamsWithContentURL:(NSString *)contentURL;
-- (MTSDKSessionConfiguration *)createMediaTailorSessionConfigWithContentURL:(NSString *)contentURL 
-                                                          palNonceParams:(MTSDKPalNonceRequestParams *)palNonceParams;
-- (void)attemptSSAISetupWithURL:(NSURL *)url 
-                         withKey:(NSString*)key
-                          headers:(NSDictionary*)headers 
-                      cacheKey:(NSString*)cacheKey 
-                 cacheManager:(CacheManager*)cacheManager 
-                    useCache:(BOOL)useCache 
-              videoExtension:(NSString*)videoExtension 
+- (MTSDKSessionConfiguration *)createMediaTailorSessionConfigWithContentURL:(NSString *)contentURL
+                                                             palNonceParams:(MTSDKPalNonceRequestParams *)palNonceParams;
+- (void)attemptSSAISetupWithURL:(NSURL *)url
+                        withKey:(NSString*)key
+                        headers:(NSDictionary*)headers
+                       cacheKey:(NSString*)cacheKey
+                   cacheManager:(CacheManager*)cacheManager
+                       useCache:(BOOL)useCache
+                 videoExtension:(NSString*)videoExtension
              overriddenDuration:(int)overriddenDuration;
 
 // ============================================
 // SESSION HANDLERS
 // ============================================
-- (void)handleMediaTailorSessionSuccessWithOriginalURL:(NSURL *)originalURL 
-                                              withKey:(NSString*)key
-                                             session:(MTSDKSession *)session 
-                                            playbackURL:(NSString *)playbackURL 
-                                              sessionId:(NSString *)sessionId 
-                                               headers:(NSDictionary *)headers 
-                                             cacheKey:(NSString *)cacheKey 
-                                        cacheManager:(CacheManager *)cacheManager 
-                                           useCache:(BOOL)useCache 
-                                     videoExtension:(NSString *)videoExtension 
+- (void)handleMediaTailorSessionSuccessWithOriginalURL:(NSURL *)originalURL
+                                               withKey:(NSString*)key
+                                               session:(MTSDKSession *)session
+                                           playbackURL:(NSString *)playbackURL
+                                             sessionId:(NSString *)sessionId
+                                               headers:(NSDictionary *)headers
+                                              cacheKey:(NSString *)cacheKey
+                                          cacheManager:(CacheManager *)cacheManager
+                                              useCache:(BOOL)useCache
+                                        videoExtension:(NSString *)videoExtension
                                     overriddenDuration:(int)overriddenDuration;
 
-- (void)handleMediaTailorSessionFailureWithOriginalURL:(NSURL *)originalURL 
-                                                  withKey:(NSString*)key 
-                                                  error:(MTSDKSessionError *)error 
-                                               headers:(NSDictionary *)headers 
-                                             cacheKey:(NSString *)cacheKey 
-                                        cacheManager:(CacheManager *)cacheManager 
-                                           useCache:(BOOL)useCache 
-                                     videoExtension:(NSString *)videoExtension 
+- (void)handleMediaTailorSessionFailureWithOriginalURL:(NSURL *)originalURL
+                                               withKey:(NSString*)key
+                                                 error:(MTSDKSessionError *)error
+                                               headers:(NSDictionary *)headers
+                                              cacheKey:(NSString *)cacheKey
+                                          cacheManager:(CacheManager *)cacheManager
+                                              useCache:(BOOL)useCache
+                                        videoExtension:(NSString *)videoExtension
                                     overriddenDuration:(int)overriddenDuration;
 
 // ============================================
 // EVENT FUNCTIONS (KEEP THESE)
 // ============================================
-- (void)sendSSAISuccessEvent:(NSString *)url 
-                    sessionId:(NSString *)sessionId 
-                   playbackUrl:(NSString *)playbackUrl;
+- (void)sendSSAISuccessEvent:(NSString *)url
+                   sessionId:(NSString *)sessionId
+                 playbackUrl:(NSString *)playbackUrl;
 
-- (void)sendSSAIFailureEvent:(NSString *)url 
-                    sessionId:(NSString *)sessionId 
-                        error:(NSString *)error;
+- (void)sendSSAIFailureEvent:(NSString *)url
+                   sessionId:(NSString *)sessionId
+                       error:(NSString *)error;
 
-- (void)fallbackToRegularPlayerWithURL:(NSURL *)url 
+- (void)fallbackToRegularPlayerWithURL:(NSURL *)url
                                withKey:(NSString*)key
-                          headers:(NSDictionary *)headers 
-                             cacheKey:(NSString *)cacheKey 
-                        cacheManager:(CacheManager *)cacheManager 
-                           useCache:(BOOL)useCache 
-                     videoExtension:(NSString *)videoExtension 
+                               headers:(NSDictionary *)headers
+                              cacheKey:(NSString *)cacheKey
+                          cacheManager:(CacheManager *)cacheManager
+                              useCache:(BOOL)useCache
+                        videoExtension:(NSString *)videoExtension
                     overriddenDuration:(int)overriddenDuration;
+
+// ============================================
+// DATAZOOM CLEANUP FUNCTION
+// ============================================
+- (void)cleanupDatazoomResources;  // ✅ ADDED
 
 @end
 

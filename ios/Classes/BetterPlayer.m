@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #import "BetterPlayer.h"
-#import <better_player/better_player-Swift.h>
+//#import <better_player/better_player-Swift.h>
 
 // Add Datazoom imports
  #import <DzBase/DzBase.h>
@@ -440,73 +440,78 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     
     NSLog(@"[BetterPlayer] Sent SSAI success event: %@", sessionId);
 }
-
 // ============================================
 // FUNCTION 6 (CORRECTED & SIMPLIFIED): Link MediaTailor Session to Datazoom
 // ============================================
 - (void)linkMediaTailorSessionToDatazoom:(MTSDKSession *)session
-                            originalURL:(NSString *)originalURLString {
-    
+                             originalURL:(NSString *)originalURLString {
+
     NSLog(@"[BetterPlayer] Linking MediaTailor session to Datazoom via Swift bridge");
-    
+
     if (!self.datazoomAdapter) {
         NSLog(@"[BetterPlayer] ERROR: No Datazoom adapter available");
         return;
     }
-    
+
     if (!session) {
         NSLog(@"[BetterPlayer] ERROR: No MediaTailor session to link");
         return;
     }
-    
-    // Get the Swift bridge
-    DataZoomBridge *bridge = [DataZoomBridge shared];
-    
-    // Configure MediaTailor through Swift bridge
+
+    // Get the NEW Swift bridge
+    DataZoomSwiftBridge *bridge = [DataZoomSwiftBridge shared];
+
+    // Get player view if available (optional)
+    UIView *playerView = nil;
+    if (self._playerLayer && self._playerLayer.superview) {
+        playerView = self._playerLayer.superview;
+    }
+
+    // Configure MediaTailor through Swift bridge with optional view
     BOOL success = [bridge configureMediaTailorWithAdapter:self.datazoomAdapter
-                                                  session:session
-                                                 videoUrl:originalURLString];
-    
+                                                   session:session
+                                                  videoUrl:originalURLString
+                                           videoPlayerView:playerView];
+
     if (success) {
         NSLog(@"[BetterPlayer] ✅ MediaTailor session linked to Datazoom");
-        
+
         // Update metadata
         NSMutableDictionary *metadata = [NSMutableDictionary dictionaryWithDictionary:@{
-            @"original_url": originalURLString ?: @"",
-            @"ssai_enabled": @YES,
-            @"ssai_session_id": session.palNonce ?: @"unknown",
-            @"ssai_provider": @"aws_mediatailor",
-            @"pal_configured": @YES,
-            @"datazoom_linked": @YES
+                @"original_url": originalURLString ?: @"",
+                @"ssai_enabled": @YES,
+                @"ssai_session_id": session.palNonce ?: @"unknown",
+                @"ssai_provider": @"aws_mediatailor",
+                @"pal_configured": @YES,
+                @"datazoom_linked": @YES
         }];
-        
+
         // Update Datazoom metadata
         DzBaseDatazoom *datazoom = [DzBaseDatazoom shared];
         [datazoom setMetadataMetadata:metadata];
-        
+
     } else {
         NSLog(@"[BetterPlayer] ❌ ERROR: Failed to link MediaTailor session");
     }
 }
-
 // ============================================
 // FUNCTION: Create Datazoom Context with AVPlayer (UPDATED)
 // ============================================
 - (void)setupDatazoomWithPlayer:(AVPlayer *)player {
-    
+
     if (!player) {
         NSLog(@"[BetterPlayer] ERROR: No player to setup Datazoom");
         return;
     }
-    
+
     NSLog(@"[BetterPlayer] Setting up Datazoom via Swift bridge");
-    
-    // Get the Swift bridge
-    DataZoomBridge *bridge = [DataZoomBridge shared];
-    
+
+    // Get the NEW Swift bridge
+    DataZoomSwiftBridge *bridge = [DataZoomSwiftBridge shared];
+
     // Create adapter through Swift bridge
     id adapter = [bridge createAdapterWithPlayer:player];
-    
+
     if (adapter) {
         self.datazoomAdapter = adapter;
         NSLog(@"[BetterPlayer] ✅ Datazoom adapter created via bridge");
@@ -847,19 +852,25 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 // ============================================
 // NEW FUNCTION: Cleanup Datazoom Resources
 // ============================================
-- (void)cleanupDatazoom {
+- (void)cleanupDatazoomResources {
     if (self.datazoomAdapter) {
-        // Get the Swift bridge
-        DataZoomBridge *bridge = [DataZoomBridge shared];
-        
+        NSLog(@"[BetterPlayer] Cleaning up Datazoom resources");
+
+        // Get the NEW Swift bridge
+        DataZoomSwiftBridge *bridge = [DataZoomSwiftBridge shared];
+
         // Remove MediaTailor session from adapter
-        if ([bridge respondsToSelector:@selector(removeMediaTailorSessionWithAdapter:)]) {
-            [bridge removeMediaTailorSessionWithAdapter:self.datazoomAdapter];
+        BOOL removed = [bridge removeMediaTailorSessionWithAdapter:self.datazoomAdapter];
+
+        if (removed) {
+            NSLog(@"[BetterPlayer] ✅ MediaTailor session removed");
+        } else {
+            NSLog(@"[BetterPlayer] ⚠️ Failed to remove MediaTailor session");
         }
-        
+
         // Clear the adapter reference
         self.datazoomAdapter = nil;
-        
+
         NSLog(@"[BetterPlayer] Datazoom resources cleaned up");
     }
 }
@@ -1388,21 +1399,18 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         NSLog(exception.debugDescription);
     }
 }
-
 - (void)dispose {
     [self pause];
     [self disposeSansEventChannel];
-    
+
     // Cleanup Datazoom resources
-    [self cleanupDatazoom];
-    
+    [self cleanupDatazoomResources];  // ✅ Changed to new method name
+
     [_eventChannel setStreamHandler:nil];
     [self disablePictureInPicture];
     [self setPictureInPicture:false];
-    // Clean up Datazoom context 
+
     _disposed = true;
-
-
 }
 
 @end
