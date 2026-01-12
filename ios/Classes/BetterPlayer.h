@@ -13,16 +13,15 @@
 
 // Add Datazoom imports
 #import <DzBase/DzBase.h>
-
 #import <DzMediaTailorAdapter/DzMediaTailorAdapter.h>
-// #import <MediaTailorSDK/MediaTailorSDK.h>
+#import <MediaTailorSDK/MediaTailorSDK.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @class CacheManager;
 
 // Forward declarations for Swift classes (they will be available via Swift bridge)
-@class DataZoomBridge;  // Our Swift bridge class
+@class DzBridge;  // Our Swift bridge class
 
 
 @interface BetterPlayer : NSObject <FlutterPlatformView, FlutterStreamHandler, AVPictureInPictureControllerDelegate>

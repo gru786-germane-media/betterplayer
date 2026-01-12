@@ -460,7 +460,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     }
     
     // Get the Swift bridge
-    DataZoomBridge *bridge = [DataZoomBridge shared];
+    DzBridge *bridge = [DzBridge shared];
     
     // Configure MediaTailor through Swift bridge
     BOOL success = [bridge configureMediaTailorWithAdapter:self.datazoomAdapter
@@ -502,7 +502,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     NSLog(@"[BetterPlayer] Setting up Datazoom via Swift bridge");
     
     // Get the Swift bridge
-    DataZoomBridge *bridge = [DataZoomBridge shared];
+    DzBridge *bridge = [DzBridge shared];
     
     // Create adapter through Swift bridge
     id adapter = [bridge createAdapterWithPlayer:player];
@@ -850,7 +850,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 - (void)cleanupDatazoom {
     if (self.datazoomAdapter) {
         // Get the Swift bridge
-        DataZoomBridge *bridge = [DataZoomBridge shared];
+        DzBridge *bridge = [DzBridge shared];
         
         // Remove MediaTailor session from adapter
         if ([bridge respondsToSelector:@selector(removeMediaTailorSessionWithAdapter:)]) {
