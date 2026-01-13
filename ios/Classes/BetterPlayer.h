@@ -22,7 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Forward declarations for Swift classes (they will be available via Swift bridge)
 @class DzBridge;  // Our Swift bridge class
-
+@class DatazoomWrapper; 
 
 @interface BetterPlayer : NSObject <FlutterPlatformView, FlutterStreamHandler, AVPictureInPictureControllerDelegate>
 @property(readonly, nonatomic) AVPlayer* player;
@@ -44,6 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) float playerRate;
 @property(nonatomic) int overriddenDuration;
 @property(nonatomic) AVPlayerTimeControlStatus lastAvPlayerTimeControlStatus;
+@property(nonatomic, strong)  DatazoomWrapper *datazoomWrapper;
 
 // ============================================
 // NEW PROPERTIES FOR DATAZOOM/SSAI INTEGRATION

@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #import "BetterPlayer.h"
-#import <better_player/better_player-Swift.h>
 
 // Add Datazoom imports
  #import <DzBase/DzBase.h>
@@ -11,6 +10,7 @@
 // #import <DzMediaTailorAdapter/DzMediaTailorAdapter.h>  // For MediaTailor ads
 // #import <MediaTailorSDK/MediaTailorSDK.h>
 #import <MediaTailorSDK/MediaTailorSDK.h>
+#import <better_player/better_player-Swift.h>
 
 
 static void* timeRangeContext = &timeRangeContext;
@@ -19,6 +19,7 @@ static void* playbackLikelyToKeepUpContext = &playbackLikelyToKeepUpContext;
 static void* playbackBufferEmptyContext = &playbackBufferEmptyContext;
 static void* playbackBufferFullContext = &playbackBufferFullContext;
 static void* presentationSizeContext = &presentationSizeContext;
+
 
 
 #if TARGET_OS_IOS
@@ -208,7 +209,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 - (void)setDataSourceURL:(NSURL*)url withKey:(NSString*)key withCertificateUrl:(NSString*)certificateUrl withLicenseUrl:(NSString*)licenseUrl withHeaders:(NSDictionary*)headers withCache:(BOOL)useCache cacheKey:(NSString*)cacheKey cacheManager:(CacheManager*)cacheManager overriddenDuration:(int) overriddenDuration videoExtension: (NSString*) videoExtension shouldEnableSSAI:(BOOL)shouldEnableSSAI {
     
     
-    NSLog(@"[BetterPlayer] Setting up player. URL: %@, SSAI: %@", 
+    NSLog(@"[BetterPlayer] Setting up player. URL: %@, SSAI: %@",
           url.absoluteString, shouldEnableSSAI ? @"YES" : @"NO");
     
      NSURL *sessionURL;
@@ -231,27 +232,27 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     NSLog(@"[BetterPlayer] will start the process of SSAI setup");
 
         // Try SSAI/MediaTailor setup
-        [self attemptSSAISetupWithURL:sessionURL 
+        [self attemptSSAISetupWithURL:sessionURL
                              withKey:key
-                                headers:headers 
-                            cacheKey:cacheKey 
-                       cacheManager:cacheManager 
-                          useCache:useCache 
-                    videoExtension:videoExtension 
+                                headers:headers
+                            cacheKey:cacheKey
+                       cacheManager:cacheManager
+                          useCache:useCache
+                    videoExtension:videoExtension
                    overriddenDuration:overriddenDuration];
     } else {
             NSLog(@"[BetterPlayer] will start the process of Regular setup");
 
         // Regular HLS flow
-        [self setupRegularPlayerWithURL:url 
+        [self setupRegularPlayerWithURL:url
                           withKey:key
-                        withLicenseUrl:licenseUrl 
-                   withCertificateUrl:certificateUrl 
-                         withCacheKey:cacheKey 
-                   withVideoExtension:videoExtension 
-                          withHeaders:headers 
-                           withCache:useCache 
-                        cacheManager:cacheManager 
+                        withLicenseUrl:licenseUrl
+                   withCertificateUrl:certificateUrl
+                         withCacheKey:cacheKey
+                   withVideoExtension:videoExtension
+                          withHeaders:headers
+                           withCache:useCache
+                        cacheManager:cacheManager
                     overriddenDuration:overriddenDuration];
         
      //  Setup Datazoom WITH the player
@@ -260,7 +261,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 
     }
 }
-
+ 
 // ============================================
 // FUNCTION 1: Initialize MediaTailor SDK (One-time)
 // ============================================
@@ -384,27 +385,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         NSLog(@"[BetterPlayer] 🧪 TEST 3: Calling createSessionConfig...");
         // TEST 3: Try to call createSessionConfig
         
-        @try {
-            MTSDKMediaTailor *mediaTailor = [MTSDKMediaTailor mediaTailor];
-
-            [mediaTailor createSessionConfig:sessionConfig callback:^(MTSDKSession *session, MTSDKSessionError *error) {
-                NSLog(@"[BetterPlayer]  🧪 TEST 3 🎯🎯🎯 CALLBACK EXECUTED! 🎯🎯🎯");
-                NSLog(@"[BetterPlayer]  🧪 TEST 3Session: %@", session);
-                NSLog(@"[BetterPlayer]  🧪 TEST 3Error: %@", error);
-                
-                if (session && session.playbackUrl) {
-                    NSLog(@"[BetterPlayer]  🧪 TEST 3✅ SUCCESS - URL: %@", session.playbackUrl);
-                } else {
-                    NSLog(@"[BetterPlayer]  🧪 TEST 3❌ FAILED - No URL");
-                }
-            }];
-            
-            NSLog(@"[BetterPlayer] ✅  🧪 TEST 3createSessionConfig WAS CALLED");
-            
-        } @catch (NSException *e) {
-            NSLog(@"[BetterPlayer] ❌❌❌  🧪 TEST 3EXCEPTION in createSessionConfig: %@", e);
-        }
-        
+      
         
         NSLog(@"[BetterPlayer] Session config created");
         
@@ -414,7 +395,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     // ============================================
     // FUNCTION 4 (UPDATED): Handle Successful MediaTailor Session
     // ============================================
-    - (void)handleMediaTailorSessionSuccessWithOriginalURL:(NSURL *)originalURL
+  - (void)handleMediaTailorSessionSuccessWithOriginalURL:(NSURL *)originalURL
     withKey:(NSString*)key
     session:(MTSDKSession *)session
     playbackURL:(NSString *)playbackURL
@@ -477,7 +458,28 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         
         NSLog(@"[BetterPlayer] SSAI setup complete for session: %@", sessionId);
     }
+// Helper method to setup the player
+- (void)setupPlayerWithURL:(NSURL *)url
+                   withKey:(NSString *)key
+                   headers:(NSDictionary *)headers
+                  cacheKey:(NSString *)cacheKey
+              cacheManager:(CacheManager *)cacheManager
+                  useCache:(BOOL)useCache
+            videoExtension:(NSString *)videoExtension
+      overriddenDuration:(int)overriddenDuration {
     
+    // Your existing player setup code here
+    AVAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
+    AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:asset];
+    
+    [self.player replaceCurrentItemWithPlayerItem:playerItem];
+    
+    if (overriddenDuration > 0) {
+        self.overriddenDuration = overriddenDuration;
+    }
+    
+    NSLog(@"[BetterPlayer] ✅ SSAI player setup complete");
+}
     // ============================================
     // FUNCTION 5: Send SSAI Success Event to Flutter
     // ============================================
@@ -704,7 +706,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     // ============================================
     // MASTER FUNCTION: attemptSSAISetupWithURL (Refactored)
     // ============================================
-    - (void)attemptSSAISetupWithURL:(NSURL *)url
+- (void)attemptSSAISetupWithURL:(NSURL *)url
     withKey:(NSString*)key
     headers:(NSDictionary*)headers
     cacheKey:(NSString*)cacheKey
@@ -716,128 +718,67 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         NSLog(@"[BetterPlayer] 🔄 Attempting SSAI setup for: %@", url.absoluteString);
         
         @try {
-            // 1. Verify MediaTailor SDK is available
-            MTSDKMediaTailor *mediaTailor = [MTSDKMediaTailor shared];
-            if (!mediaTailor) {
-                NSLog(@"[BetterPlayer] ❌ MediaTailor not available");
-                [self fallbackToRegularPlayerWithURL:url withKey:key headers:headers
-                                            cacheKey:cacheKey cacheManager:cacheManager
-                                            useCache:useCache videoExtension:videoExtension
-                                  overriddenDuration:overriddenDuration];
-                return;
+            // Initialize DatazoomWrapper
+            if (!self.datazoomWrapper) {
+                self.datazoomWrapper = [[DatazoomWrapper alloc] init];
             }
             
-            NSLog(@"[BetterPlayer] ✅ MediaTailor instance available: %p", mediaTailor);
-            
-            // 2. Create PAL nonce request parameters
-            NSLog(@"[BetterPlayer] Creating PAL nonce request params");
-            MTSDKPalNonceRequestParams *palNonceParams =
-            [self createPalNonceRequestParamsWithContentURL:url.absoluteString];
-            
-            if (!palNonceParams) {
-                NSLog(@"[BetterPlayer] ❌ Failed to create PAL nonce params");
-                [self fallbackToRegularPlayerWithURL:url withKey:key headers:headers
-                                            cacheKey:cacheKey cacheManager:cacheManager
-                                            useCache:useCache videoExtension:videoExtension
-                                  overriddenDuration:overriddenDuration];
-                return;
-            }
-            
-            NSLog(@"[BetterPlayer] ✅ PAL nonce params created");
-            
-            // 3. Create session configuration
-            NSLog(@"[BetterPlayer] Creating MediaTailor session configuration");
-            MTSDKSessionConfiguration *sessionConfig =
-            [self createMediaTailorSessionConfigWithContentURL:url.absoluteString
-                                                palNonceParams:palNonceParams];
-            
-            if (!sessionConfig) {
-                NSLog(@"[BetterPlayer] ❌ Failed to create session configuration");
-                [self fallbackToRegularPlayerWithURL:url withKey:key headers:headers
-                                            cacheKey:cacheKey cacheManager:cacheManager
-                                            useCache:useCache videoExtension:videoExtension
-                                  overriddenDuration:overriddenDuration];
-                return;
-            }
-            
-            NSLog(@"[BetterPlayer] ✅ Session configuration created");
-            
-            // 4. Create session with callback
-            NSLog(@"[BetterPlayer] 📤 Calling createSessionConfig with callback...");
+            NSLog(@"[BetterPlayer] 📤 Calling createMediaTailorSession...");
             
             __weak typeof(self) weakSelf = self;
             
-            [mediaTailor createSessionConfig:sessionConfig
-                                    callback:^(MTSDKSession * _Nullable session,
-                                               MTSDKSessionError * _Nullable error) {
-                
-                NSLog(@"[BetterPlayer] ========================================");
-                NSLog(@"[BetterPlayer] 📥 CALLBACK FIRED!");
-                NSLog(@"[BetterPlayer] ========================================");
-                
-                __strong typeof(self) strongSelf = weakSelf;
-                if (!strongSelf) {
-                    NSLog(@"[BetterPlayer] ❌ Self deallocated during callback");
-                    return;
-                }
-                
-                NSLog(@"[BetterPlayer] Session object: %@", session);
-                NSLog(@"[BetterPlayer] Error object: %@", error);
-                
-                if (session) {
-                    NSLog(@"[BetterPlayer] Session details:");
-                    NSLog(@"[BetterPlayer]   - playbackUrl: %@", session.playbackUrl);
-                    NSLog(@"[BetterPlayer]   - palNonce: %@", session.palNonce);
-                }
-                
-                if (error) {
-                    NSLog(@"[BetterPlayer] Error details:");
-                    NSLog(@"[BetterPlayer]   - code: %@", error.code);
-                    NSLog(@"[BetterPlayer]   - message: %@", error.message);
-                }
-                
-                // Process on main thread
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    NSLog(@"[BetterPlayer] Processing callback on main thread...");
-                    
-                    // Check if we have a valid session with playback URL
-                    if (error || !session || !session.playbackUrl || session.playbackUrl.length == 0) {
-                        NSLog(@"[BetterPlayer] ❌ SSAI FAILED");
-                        NSLog(@"[BetterPlayer]   - Has error: %@", error ? @"YES" : @"NO");
-                        NSLog(@"[BetterPlayer]   - Has session: %@", session ? @"YES" : @"NO");
-                        NSLog(@"[BetterPlayer]   - Has playbackUrl: %@",
-                              (session && session.playbackUrl) ? @"YES" : @"NO");
-                        
-                        // Fallback to regular playback
-                        [strongSelf fallbackToRegularPlayerWithURL:url
-                                                           withKey:key
-                                                           headers:headers
-                                                          cacheKey:cacheKey
-                                                      cacheManager:cacheManager
-                                                          useCache:useCache
-                                                    videoExtension:videoExtension
-                                                overriddenDuration:overriddenDuration];
-                    } else {
-                        NSLog(@"[BetterPlayer] ✅ SSAI SUCCESS");
-                        NSLog(@"[BetterPlayer]   - Playback URL: %@", session.playbackUrl);
-                        NSLog(@"[BetterPlayer]   - Session ID: %@", session.palNonce ?: @"unknown");
-                        
-                        [strongSelf handleMediaTailorSessionSuccessWithOriginalURL:url
-                                                                           withKey:key
-                                                                           session:session
-                                                                       playbackURL:session.playbackUrl
-                                                                         sessionId:session.palNonce
-                                                                           headers:headers
-                                                                          cacheKey:cacheKey
-                                                                      cacheManager:cacheManager
-                                                                          useCache:useCache
-                                                                    videoExtension:videoExtension
-                                                                overriddenDuration:overriddenDuration];
-                    }
-                });
-            }];
-            
-            NSLog(@"[BetterPlayer] ✅ createSessionConfig called (awaiting callback)");
+            [self.datazoomWrapper
+             createMediaTailorSessionWithUrl: url.absoluteString
+             onSuccess:^(NSString *mtSessionUrl, MTSDKSession* session) {
+                 
+                 __strong typeof(self) strongSelf = weakSelf;
+                 if (!strongSelf) {
+                     NSLog(@"[BetterPlayer] ❌ Self deallocated during callback");
+                     return;
+                 }
+                 
+                 NSLog(@"[BetterPlayer] ========================================");
+                 NSLog(@"[BetterPlayer] ✅ SSAI SUCCESS");
+                 NSLog(@"[BetterPlayer] ========================================");
+                 NSLog(@"[BetterPlayer]   - Playback URL: %@", mtSessionUrl);
+                 NSLog(@"[BetterPlayer]   - Session: %@", session);
+                 
+                 // Handle successful session creation
+                 [strongSelf handleMediaTailorSessionSuccessWithOriginalURL:url
+                                                                    withKey:key
+                                                                    session:session
+                                                                playbackURL:mtSessionUrl
+                                                                  sessionId:@"datazoom-session"
+                                                                    headers:headers
+                                                                   cacheKey:cacheKey
+                                                               cacheManager:cacheManager
+                                                                   useCache:useCache
+                                                             videoExtension:videoExtension
+                                                         overriddenDuration:overriddenDuration];
+             }
+             onError:^(NSString *errorMessage) {
+                 
+                 __strong typeof(self) strongSelf = weakSelf;
+                 if (!strongSelf) {
+                     NSLog(@"[BetterPlayer] ❌ Self deallocated during callback");
+                     return;
+                 }
+                 
+                 NSLog(@"[BetterPlayer] ========================================");
+                 NSLog(@"[BetterPlayer] ❌ SSAI FAILED");
+                 NSLog(@"[BetterPlayer] ========================================");
+                 NSLog(@"[BetterPlayer]   - Error: %@", errorMessage);
+                 
+                 // Fallback to regular playback
+                 [strongSelf fallbackToRegularPlayerWithURL:url
+                                                    withKey:key
+                                                    headers:headers
+                                                   cacheKey:cacheKey
+                                               cacheManager:cacheManager
+                                                   useCache:useCache
+                                             videoExtension:videoExtension
+                                       overriddenDuration:overriddenDuration];
+             }];  // Close the createMediaTailorSessionWithUrl call
             
         } @catch (NSException *e) {
             NSLog(@"[BetterPlayer] ❌ EXCEPTION in SSAI setup: %@", e.reason);
@@ -846,8 +787,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                                         useCache:useCache videoExtension:videoExtension
                               overriddenDuration:overriddenDuration];
         }
-    }
-    
+    }  // Close attemptSSAISetupWithURL method
     
     // ============================================
     // CORRECT: setupRegularPlayerWithURL (Standalone Implementation)
