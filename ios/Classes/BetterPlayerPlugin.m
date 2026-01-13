@@ -150,8 +150,8 @@ bool _remoteCommandsInitialized = false;
             }
             
                 
-                [consentBuilder allowStorageValue:YES];                     
-                [consentBuilder directedForChildOrUnknownAgeValue:NO];  
+            consentBuilder = [consentBuilder allowStorageValue:YES];
+            consentBuilder =   [consentBuilder directedForChildOrUnknownAgeValue:NO];
                  MTSDKPalConsentSettings *consent = [consentBuilder build];
             
                 MTSDKMediaTailor *mediaTailor = [MTSDKMediaTailor mediaTailor];
