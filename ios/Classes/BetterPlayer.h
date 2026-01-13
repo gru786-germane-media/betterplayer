@@ -67,16 +67,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 // ✅ SINGLE CORRECT DECLARATION (REMOVED DUPLICATE)
 - (void)setDataSourceURL:(NSURL*)url 
-             withKey:(NSString*)key          
-          withLicenseUrl:(NSString*)licenseUrl 
-     withCertificateUrl:(NSString*)certificateUrl 
-           withCacheKey:(NSString*)cacheKey 
-     withVideoExtension:(NSString*)videoExtension 
-            withHeaders:(NSDictionary*)headers 
-            withCache:(BOOL)useCache 
-         cacheManager:(CacheManager*)cacheManager 
-     overriddenDuration:(int)overriddenDuration
-        shouldEnableSSAI:(BOOL)shouldEnableSSAI;
+                 withKey:(NSString*)key          
+          withCertificateUrl:(NSString*)certificateUrl 
+             withLicenseUrl:(NSString*)licenseUrl 
+                withHeaders:(NSDictionary*)headers 
+                  withCache:(BOOL)useCache 
+                  cacheKey:(NSString*)cacheKey 
+            cacheManager:(CacheManager*)cacheManager 
+         overriddenDuration:(int)overriddenDuration
+            videoExtension:(NSString*)videoExtension 
+          shouldEnableSSAI:(BOOL)shouldEnableSSAI;
 
 - (void)setVolume:(double)volume;
 - (void)setSpeed:(double)speed result:(FlutterResult)result;

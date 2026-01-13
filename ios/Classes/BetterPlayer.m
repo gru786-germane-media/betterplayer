@@ -211,13 +211,27 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     NSLog(@"[BetterPlayer] Setting up player. URL: %@, SSAI: %@", 
           url.absoluteString, shouldEnableSSAI ? @"YES" : @"NO");
     
-   
+     NSURL *sessionURL;
+    if(shouldEnableSSAI){
+    // Create session URL by replacing "master" with "session"
+    NSString *originalURLString = url.absoluteString;
+    NSString *sessionURLString = [originalURLString stringByReplacingOccurrencesOfString:@"/master/"
+                                                                              withString:@"/session/"];
     
-    if (shouldEnableSSAI) {
+    NSLog(@"[BetterPlayer] Original URL: %@", originalURLString);
+    NSLog(@"[BetterPlayer] Session URL: %@", sessionURLString);
+    
+    // Convert back to NSURL
+     sessionURL = [NSURL URLWithString:sessionURLString];
+     
+    }
+    
+    
+    if (shouldEnableSSAI && sessionURL) {
     NSLog(@"[BetterPlayer] will start the process of SSAI setup");
 
         // Try SSAI/MediaTailor setup
-        [self attemptSSAISetupWithURL:url 
+        [self attemptSSAISetupWithURL:sessionURL 
                              withKey:key
                                 headers:headers 
                             cacheKey:cacheKey 
@@ -251,30 +265,27 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 // FUNCTION 1: Initialize MediaTailor SDK (One-time)
 // ============================================
 - (void)initializeMediaTailorSDK {
-    static dispatch_once_t mtOnceToken;
-    dispatch_once(&mtOnceToken, ^{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSLog(@"[BetterPlayer] INITIALIZING MEDIATAILOR");
+        
         @try {
-            // Get the shared MediaTailor singleton
             MTSDKMediaTailor *mediaTailor = [MTSDKMediaTailor shared];
+            NSLog(@"[BetterPlayer] Got instance: %p", mediaTailor);
             
-            // Set the log level
-            [mediaTailor setLogLevelLogLevel:MTSDKLogLevel.debug];
+            // Create consent settings
+            MTSDKPalConsentSettingsBuilder *builder = [[MTSDKPalConsentSettingsBuilder alloc] init];
+            [builder allowStorageValue:YES];
+            MTSDKPalConsentSettings *consent = [builder build];
             
-            // Create PAL consent settings (User Privacy/GDPR)
-            MTSDKPalConsentSettingsBuilder *consentBuilder = [[MTSDKPalConsentSettingsBuilder alloc] init];
-            [consentBuilder allowStorageValue:YES]; // Set based on user consent
-            [consentBuilder directedForChildOrUnknownAgeValue:NO];
+            NSLog(@"[BetterPlayer] Calling doInitPalConsentSettings...");
+            [mediaTailor doInitPalConsentSettings:consent];
             
-            MTSDKPalConsentSettings *consentSettings = [consentBuilder build];
-            
-            // Initialize PAL with consent settings
-            [mediaTailor doInitPalConsentSettings:consentSettings];
-            
-            NSLog(@"[BetterPlayer] MediaTailor SDK initialized with PAL");
-            
-        } @catch (NSException *exception) {
-            NSLog(@"[BetterPlayer] MediaTailor initialization failed: %@", exception.reason);
+        } @catch (NSException *e) {
+            NSLog(@"[BetterPlayer] ❌ INIT ERROR: %@", e);
         }
+
+
     });
 }
  
@@ -343,9 +354,16 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     
     // 4. Build the configuration
     MTSDKSessionConfiguration *sessionConfig = [configBuilder build];
-    
+    MTSDKMediaTailor *mediaTailor = [MTSDKMediaTailor shared];
+
     NSLog(@"[BetterPlayer] Session config created");
-    
+    // THIS IS THE MOST IMPORTANT LINE
+   
+    NSLog(@"[BetterPlayer] ✅ 33doInitPalConsentSettings CALLED");
+    [mediaTailor createSessionConfig:sessionConfig callback:^(MTSDKSession * _Nullable session, MTSDKSessionError * _Nullable error) {
+        NSLog(@"[BetterPlayer] ✅ 55doInitPalConsentSettings CALLED");
+    }
+    ];
     return sessionConfig;
 }
 
@@ -667,16 +685,46 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     MTSDKMediaTailor *mediaTailor = [MTSDKMediaTailor shared];
     
     __weak typeof(self) weakSelf = self;
-    
+        // TRY-CATCH around the MediaTailor call
+    @try {
+        NSLog(@"[BetterPlayer](()) 🚀 About to call createSessionConfig:callback:...");
+      
     [mediaTailor createSessionConfig:sessionConfig callback:^(MTSDKSession * _Nullable session, MTSDKSessionError * _Nullable error) {
         
+        
+        NSLog(@"[BetterPlayer] 🔄 MediaTailor callback received on thread: %@", [NSThread currentThread]);
+        NSLog(@"[BetterPlayer] Session: %@", session);
+        NSLog(@"[BetterPlayer] Error: %@", error);
+
         __strong typeof(self) strongSelf = weakSelf;
         if (!strongSelf) return;
         
         dispatch_async(dispatch_get_main_queue(), ^{
+                  NSLog(@"[BetterPlayer] 📱 Processing callback on main thread...");
+
             if (error || !session) {
                 // SSAI FAILURE
-                [strongSelf handleMediaTailorSessionFailureWithOriginalURL:url 
+                NSLog(@"[BetterPlayer] ❌ SSAI FAILURE - Error: %@, Session: %@", error, session);
+
+                NSURL *masterURL; 
+                // Create Master URL by replacing "session" with "master"
+                NSString *originalURLString = url.absoluteString;
+                NSString *masterURLString = [originalURLString stringByReplacingOccurrencesOfString:@"/session/"
+                                                                                        withString:@"/master/"];
+                
+                NSLog(@"[BetterPlayer] Original URL: %@", originalURLString);
+                NSLog(@"[BetterPlayer] Master URL: %@", masterURLString);
+                
+                // Convert back to NSURL
+                masterURL = [NSURL URLWithString:masterURLString];
+               
+                if(!masterURL){
+                    NSLog(@"[BetterPlayer] ⚠️ Could not convert to master URL, using original");
+
+                   masterURL = url;
+                }
+                
+                [strongSelf handleMediaTailorSessionFailureWithOriginalURL:masterURL 
                                                                     withKey:key
                                                                      error:error 
                                                                    headers:headers 
@@ -686,7 +734,8 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                                                          videoExtension:videoExtension 
                                                         overriddenDuration:overriddenDuration];
             } else {
-                // SSAI SUCCESS
+                NSLog(@"[BetterPlayer] ✅ SSAI SUCCESS - Session created");
+                    // SSAI SUCCESS
                 NSString *playbackUrl = session.playbackUrl;
                 NSString *sessionId = session.palNonce ?: @"unknown";
                 
@@ -694,6 +743,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                 NSLog(@"[BetterPlayer] Session Success with sessionId (which is session.palNonce ?: unknown) : %@", sessionId);
 
                 if (!playbackUrl) {
+                NSLog(@"[BetterPlayer] ❌ ERROR: No playback URL from session");
                     // No playback URL - treat as failure
                     [strongSelf sendSSAIFailureEvent:url.absoluteString 
                                             sessionId:sessionId 
@@ -708,7 +758,8 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                                             overriddenDuration:overriddenDuration];
                     return;
                 }
-                
+                    NSLog(@"[BetterPlayer] 📱 Proceeding to handle successful session...");
+
                 [strongSelf handleMediaTailorSessionSuccessWithOriginalURL:url 
                                                                     withKey:key 
                                                                    session:session 
@@ -722,7 +773,14 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                                                       overriddenDuration:overriddenDuration];
             }
         });
-    }];
+    }
+    ];
+    } @catch (NSException *exception) {
+       NSLog(@"[BetterPlayer](()) createSessionConfig:sessionConfig failed: %@", exception.reason);
+
+    }
+    NSLog(@"[BetterPlayer] ✅ createSessionConfig:callback: method called successfully");
+    NSLog(@"[BetterPlayer] ⚡⚡⚡ ATTEMPTING SSAI SETUP COMPLETE (waiting for callback) ⚡⚡⚡");
 }
 
 // ============================================
