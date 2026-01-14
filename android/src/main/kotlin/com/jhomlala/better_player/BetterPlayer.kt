@@ -317,7 +317,7 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
 
         var newDataSource =
         //new url delivered on 20th dec
-         "https://dfqqzowu2qhqt.cloudfront.net/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/vast-ad-tag-issue-2/v1/channel/testChannel2/germane.m3u8";
+         "https://dfqqzowu2qhqt.cloudfront.net/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/vast-ad-tag-issue-2/v1/channel/testChannel2/germane.m3u8?";
 
 
         //new url for testing has 2 min ads after every 2 min

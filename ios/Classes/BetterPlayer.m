@@ -209,7 +209,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 - (void)setDataSourceURL:(NSURL*)url withKey:(NSString*)key withCertificateUrl:(NSString*)certificateUrl withLicenseUrl:(NSString*)licenseUrl withHeaders:(NSDictionary*)headers withCache:(BOOL)useCache cacheKey:(NSString*)cacheKey cacheManager:(CacheManager*)cacheManager overriddenDuration:(int) overriddenDuration videoExtension: (NSString*) videoExtension shouldEnableSSAI:(BOOL)shouldEnableSSAI {
     
     
-    NSLog(@"[BetterPlayer] Setting up player. URL: %@, SSAI: %@",
+    NSLog(@"[BetterPlayer] Setting up player. URL: %@, SSAI: %@", 
           url.absoluteString, shouldEnableSSAI ? @"YES" : @"NO");
     
      NSURL *sessionURL;
@@ -232,27 +232,27 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     NSLog(@"[BetterPlayer] will start the process of SSAI setup");
 
         // Try SSAI/MediaTailor setup
-        [self attemptSSAISetupWithURL:sessionURL
+        [self attemptSSAISetupWithURL:sessionURL 
                              withKey:key
-                                headers:headers
-                            cacheKey:cacheKey
-                       cacheManager:cacheManager
-                          useCache:useCache
-                    videoExtension:videoExtension
+                                headers:headers 
+                            cacheKey:cacheKey 
+                       cacheManager:cacheManager 
+                          useCache:useCache 
+                    videoExtension:videoExtension 
                    overriddenDuration:overriddenDuration];
     } else {
             NSLog(@"[BetterPlayer] will start the process of Regular setup");
 
         // Regular HLS flow
-        [self setupRegularPlayerWithURL:url
+        [self setupRegularPlayerWithURL:url 
                           withKey:key
-                        withLicenseUrl:licenseUrl
-                   withCertificateUrl:certificateUrl
-                         withCacheKey:cacheKey
-                   withVideoExtension:videoExtension
-                          withHeaders:headers
-                           withCache:useCache
-                        cacheManager:cacheManager
+                        withLicenseUrl:licenseUrl 
+                   withCertificateUrl:certificateUrl 
+                         withCacheKey:cacheKey 
+                   withVideoExtension:videoExtension 
+                          withHeaders:headers 
+                           withCache:useCache 
+                        cacheManager:cacheManager 
                     overriddenDuration:overriddenDuration];
         
      //  Setup Datazoom WITH the player
@@ -509,7 +509,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     // FUNCTION 6 (CORRECTED & SIMPLIFIED): Link MediaTailor Session to Datazoom
     // ============================================
     - (void)linkMediaTailorSessionToDatazoom:(MTSDKSession *)session
-    originalURL:(NSString *)originalURLString {
+    originalURL:(NSString *)originalURLString { 
         
         NSLog(@"[BetterPlayer] Linking MediaTailor session to Datazoom via Swift bridge");
         
