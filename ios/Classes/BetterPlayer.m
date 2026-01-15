@@ -11,7 +11,8 @@
 // #import <MediaTailorSDK/MediaTailorSDK.h>
 #import <MediaTailorSDK/MediaTailorSDK.h>
 #import <better_player/better_player-Swift.h>
-
+#import <AdSupport/AdSupport.h>
+#import <AppTrackingTransparency/AppTrackingTransparency.h>
 
 static void* timeRangeContext = &timeRangeContext;
 static void* statusContext = &statusContext;
@@ -205,75 +206,202 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     NSString* path = [[NSBundle mainBundle] pathForResource:asset ofType:nil];
     return [self setDataSourceURL:[NSURL fileURLWithPath:path] withKey:key withCertificateUrl:certificateUrl withLicenseUrl:(NSString*)licenseUrl withHeaders: @{} withCache: false cacheKey:cacheKey cacheManager:cacheManager overriddenDuration:overriddenDuration videoExtension: nil shouldEnableSSAI:false];
 }
-
-- (void)setDataSourceURL:(NSURL*)url withKey:(NSString*)key withCertificateUrl:(NSString*)certificateUrl withLicenseUrl:(NSString*)licenseUrl withHeaders:(NSDictionary*)headers withCache:(BOOL)useCache cacheKey:(NSString*)cacheKey cacheManager:(CacheManager*)cacheManager overriddenDuration:(int) overriddenDuration videoExtension: (NSString*) videoExtension shouldEnableSSAI:(BOOL)shouldEnableSSAI {
+// Helper method to get RDID (IDFA)
+- (NSString *)getRDID {
+   // NSLog(@"[BetterPlayer] START: Getting RDID...");
     
-    
-    NSLog(@"[BetterPlayer] Setting up player. URL: %@, SSAI: %@", 
-          url.absoluteString, shouldEnableSSAI ? @"YES" : @"NO");
-    
-     NSURL *sessionURL;
-    if(shouldEnableSSAI){
-    // Create session URL by replacing "master" with "session"
-    NSString *originalURLString = url.absoluteString;
-    NSString *sessionURLString = [originalURLString stringByReplacingOccurrencesOfString:@"/master/"
-                                                                              withString:@"/session/"];
-    
-    NSLog(@"[BetterPlayer] Original URL: %@", originalURLString);
-    NSLog(@"[BetterPlayer] Session URL: %@", sessionURLString);
-    
-    // Convert back to NSURL
-     sessionURL = [NSURL URLWithString:sessionURLString];
-     
-    }
-    
-    
-    if (shouldEnableSSAI && sessionURL) {
-    NSLog(@"[BetterPlayer] will start the process of SSAI setup");
-
-        // Try SSAI/MediaTailor setup
-        [self attemptSSAISetupWithURL:sessionURL 
-                             withKey:key
-                                headers:headers 
-                            cacheKey:cacheKey 
-                       cacheManager:cacheManager 
-                          useCache:useCache 
-                    videoExtension:videoExtension 
-                   overriddenDuration:overriddenDuration];
-    } else {
-            NSLog(@"[BetterPlayer] will start the process of Regular setup");
-
-        // Regular HLS flow
-        [self setupRegularPlayerWithURL:url 
-                          withKey:key
-                        withLicenseUrl:licenseUrl 
-                   withCertificateUrl:certificateUrl 
-                         withCacheKey:cacheKey 
-                   withVideoExtension:videoExtension 
-                          withHeaders:headers 
-                           withCache:useCache 
-                        cacheManager:cacheManager 
-                    overriddenDuration:overriddenDuration];
+    @try {
+        BOOL isTrackingEnabled = [[ASIdentifierManager sharedManager] isAdvertisingTrackingEnabled];
+      //  NSLog(@"[BetterPlayer] Advertising tracking enabled: %@", isTrackingEnabled ? @"YES" : @"NO");
         
-     //  Setup Datazoom WITH the player
-    [self setupDatazoomWithPlayer:self.player];
-    
-
+        if (isTrackingEnabled) {
+            NSUUID *idfaUUID = [[ASIdentifierManager sharedManager] advertisingIdentifier];
+            NSString *idfaString = [idfaUUID UUIDString];
+      //      NSLog(@"[BetterPlayer] SUCCESS: Got RDID (IDFA): %@", idfaString);
+            return idfaString;
+        } else {
+            // Generate random UUID when tracking is disabled
+            NSUUID *randomUUID = [NSUUID UUID];
+            NSString *randomUUIDString = [randomUUID UUIDString];
+       //     NSLog(@"[BetterPlayer] Tracking disabled, generated random UUID: %@", randomUUIDString);
+            return randomUUIDString;
+        }
+    }
+    @catch (NSException *exception) {
+   //     NSLog(@"[BetterPlayer] EXCEPTION in getRDID: %@", exception.description);
+   //     NSLog(@"[BetterPlayer] Exception reason: %@", exception.reason);
+        NSUUID *fallbackUUID = [NSUUID UUID];
+    //    NSLog(@"[BetterPlayer] Using fallback UUID: %@", [fallbackUUID UUIDString]);
+        return [fallbackUUID UUIDString];
     }
 }
- 
+
+// Helper method to extract query parameter from URL
+- (NSString *)extractQueryParameterValue:(NSURL *)url parameterName:(NSString *)paramName {
+  //  NSLog(@"[BetterPlayer] START: Extracting query parameter '%@' from URL: %@", paramName, url.absoluteString);
+    
+    @try {
+        NSURLComponents *components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+      //  NSLog(@"[BetterPlayer] URL components created successfully");
+        
+        if (components == nil) {
+        //    NSLog(@"[BetterPlayer] ERROR: Failed to create URL components from URL");
+            return @"";
+        }
+        
+     //   NSLog(@"[BetterPlayer] Total query items found: %lu", (unsigned long)components.queryItems.count);
+        
+        for (NSURLQueryItem *queryItem in components.queryItems) {
+         //   NSLog(@"[BetterPlayer] Query item - Name: %@, Value: %@", queryItem.name, queryItem.value);
+            
+            if ([queryItem.name isEqualToString:paramName]) {
+                NSString *value = queryItem.value ? queryItem.value : @"";
+              //  NSLog(@"[BetterPlayer] SUCCESS: Found parameter '%@' with value: %@", paramName, value);
+                return value;
+            }
+        }
+        
+     //   NSLog(@"[BetterPlayer] WARNING: Parameter '%@' not found in URL query items", paramName);
+        return @"";
+    }
+    @catch (NSException *exception) {
+     //   NSLog(@"[BetterPlayer] EXCEPTION in extractQueryParameterValue: %@", exception.description);
+    //    NSLog(@"[BetterPlayer] Exception reason: %@", exception.reason);
+        return @"";
+    }
+}
+
+// Helper method to add player parameters to URL
+- (NSURL *)addPlayerParametersToURL:(NSURL *)baseURL {
+  //  NSLog(@"[BetterPlayer] START: addPlayerParametersToURL with base URL: %@", baseURL.absoluteString);
+    
+    @try {
+        NSString *baseURLString = baseURL.absoluteString;
+    //    NSLog(@"[BetterPlayer] Base URL string created: %@", baseURLString);
+        
+        // Get RDID
+     //   NSLog(@"[BetterPlayer] Calling getRDID...");
+        NSString *rdid = [self getRDID];
+     //   NSLog(@"[BetterPlayer] RDID obtained: %@", rdid);
+        
+        // Note: sessionID removed as per requirements
+        
+        // Build player_params format: player_params.idtype=value&player_params.an=value etc.
+        NSMutableArray *playerParamsComponents = [NSMutableArray array];
+     //   NSLog(@"[BetterPlayer] Building player parameters array...");
+        
+        // Add each parameter with player_params prefix
+        NSString *param1 = @"ads.idtype=idfa";
+        [playerParamsComponents addObject:param1];
+    //    NSLog(@"[BetterPlayer] Added param: %@", param1);
+        
+        NSString *anValue = [@"Swift TV" stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+        NSString *param2 = [NSString stringWithFormat:@"ads.an=%@", anValue];
+        [playerParamsComponents addObject:param2];
+      //  NSLog(@"[BetterPlayer] Added param: %@", param2);
+        
+        NSString *msidValue = [@"com.thegermanemedia.swiftTvFe" stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+        NSString *param3 = [NSString stringWithFormat:@"ads.msid=%@", msidValue];
+        [playerParamsComponents addObject:param3];
+      //  NSLog(@"[BetterPlayer] Added param: %@", param3);
+        
+        NSString *rdidValue = [rdid stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+        NSString *param4 = [NSString stringWithFormat:@"ads.rdid=%@", rdidValue];
+        [playerParamsComponents addObject:param4];
+      //  NSLog(@"[BetterPlayer] Added param: %@", param4);
+        
+        // Combine all player params
+        NSString *playerParamString = [playerParamsComponents componentsJoinedByString:@"&"];
+     //   NSLog(@"[BetterPlayer] Combined player parameters: %@", playerParamString);
+        
+        NSString *fullURLString = [NSString stringWithFormat:@"%@?%@", baseURLString, playerParamString];
+     //   NSLog(@"[BetterPlayer] Full URL with parameters: %@", fullURLString);
+        
+        NSURL *finalURL = [NSURL URLWithString:fullURLString];
+        
+        if (finalURL == nil) {
+       //     NSLog(@"[BetterPlayer] ERROR: Failed to create NSURL from full URL string");
+            return baseURL;
+        }
+        
+      //  NSLog(@"[BetterPlayer] SUCCESS: Final URL created: %@", finalURL.absoluteString);
+        return finalURL;
+    }
+    @catch (NSException *exception) {
+     //   NSLog(@"[BetterPlayer] EXCEPTION in addPlayerParametersToURL: %@", exception.description);
+     //   NSLog(@"[BetterPlayer] Exception reason: %@", exception.reason);
+     //   NSLog(@"[BetterPlayer] Returning original base URL due to exception");
+        return baseURL;
+    }
+}
+
+// Main setup method
+- (void)setDataSourceURL:(NSURL*)url withKey:(NSString*)key withCertificateUrl:(NSString*)certificateUrl withLicenseUrl:(NSString*)licenseUrl withHeaders:(NSDictionary*)headers withCache:(BOOL)useCache cacheKey:(NSString*)cacheKey cacheManager:(CacheManager*)cacheManager overriddenDuration:(int) overriddenDuration videoExtension: (NSString*) videoExtension shouldEnableSSAI:(BOOL)shouldEnableSSAI {
+    
+    //NSLog(@"[BetterPlayer] Setting up player. URL: %@, SSAI: %@", 
+      //    url.absoluteString, shouldEnableSSAI ? @"YES" : @"NO");
+    
+    NSURL *sessionURL;
+    
+    if(shouldEnableSSAI) {
+        // Create session URL by replacing "master" with "session"
+        NSString *originalURLString = url.absoluteString;
+        NSString *sessionURLString = [originalURLString stringByReplacingOccurrencesOfString:@"/master/"
+                                                                                  withString:@"/session/"];
+        
+       // NSLog(@"[BetterPlayer] Original URL: %@", originalURLString);
+      //  NSLog(@"[BetterPlayer] Session URL: %@", sessionURLString);
+        
+        // Convert to NSURL
+        NSURL *baseSessionURL = [NSURL URLWithString:sessionURLString];
+        
+        // Add player parameters to session URL
+        sessionURL = [self addPlayerParametersToURL:baseSessionURL];
+    }
+    
+    if (shouldEnableSSAI && sessionURL) {
+       // NSLog(@"[BetterPlayer] will start the process of SSAI setup");
+        
+        // Try SSAI/MediaTailor setup with session URL containing player parameters
+        [self attemptSSAISetupWithURL:sessionURL 
+                             withKey:key
+                              headers:headers 
+                           cacheKey:cacheKey 
+                      cacheManager:cacheManager 
+                         useCache:useCache 
+                   videoExtension:videoExtension 
+                  overriddenDuration:overriddenDuration];
+    } else {
+      //  NSLog(@"[BetterPlayer] will start the process of Regular setup");
+        
+        // Regular HLS flow
+        [self setupRegularPlayerWithURL:url 
+                                withKey:key
+                          withLicenseUrl:licenseUrl 
+                     withCertificateUrl:certificateUrl 
+                           withCacheKey:cacheKey 
+                     withVideoExtension:videoExtension 
+                            withHeaders:headers 
+                             withCache:useCache 
+                          cacheManager:cacheManager 
+                      overriddenDuration:overriddenDuration];
+        
+        // Setup Datazoom WITH the player
+        [self setupDatazoomWithPlayer:self.player];
+    }
+}
 // ============================================
 // FUNCTION 1: Initialize MediaTailor SDK (One-time)
 // ============================================
 - (void)initializeMediaTailorSDK {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        NSLog(@"[BetterPlayer] INITIALIZING MEDIATAILOR SDK");
+      //  NSLog(@"[BetterPlayer] INITIALIZING MEDIATAILOR SDK");
         
         @try {
             // 1. Get MediaTailor instance
             MTSDKMediaTailor *mediaTailor = [MTSDKMediaTailor shared];
-            NSLog(@"[BetterPlayer] MediaTailor instance: %p", mediaTailor);
+          //  NSLog(@"[BetterPlayer] MediaTailor instance: %p", mediaTailor);
             
             // 2. Create PAL consent settings
             MTSDKPalConsentSettingsBuilder *consentBuilder = [[MTSDKPalConsentSettingsBuilder alloc] init];
@@ -282,18 +410,18 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             
             // 3. Initialize PAL consent
             [mediaTailor doInitPalConsentSettings:consentSettings];
-            NSLog(@"[BetterPlayer] ✅ PAL Consent initialized");
+          //  NSLog(@"[BetterPlayer] ✅ PAL Consent initialized");
             
             // 4. Verify initialization worked
             if (mediaTailor) {
-                NSLog(@"[BetterPlayer] ✅ MediaTailor SDK ready for session creation");
+         //       NSLog(@"[BetterPlayer] ✅ MediaTailor SDK ready for session creation");
             } else {
-                NSLog(@"[BetterPlayer] ❌ MediaTailor instance is nil");
+          //      NSLog(@"[BetterPlayer] ❌ MediaTailor instance is nil");
             }
             
         } @catch (NSException *e) {
-            NSLog(@"[BetterPlayer] ❌ MediaTailor INIT ERROR: %@ | Reason: %@",
-                  e.name, e.reason);
+       //     NSLog(@"[BetterPlayer] ❌ MediaTailor INIT ERROR: %@ | Reason: %@",
+          //        e.name, e.reason);
         }
     });
 }
@@ -304,18 +432,18 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     
     - (MTSDKPalNonceRequestParams *)createPalNonceRequestParamsWithContentURL:(NSString *)contentURL {
         
-        NSLog(@"[BetterPlayer] Creating PAL nonce request params for: %@", contentURL);
+      //  NSLog(@"[BetterPlayer] Creating PAL nonce request params for: %@", contentURL);
         
         @try {
             if (!contentURL || contentURL.length == 0) {
-                NSLog(@"[BetterPlayer] ❌ Invalid content URL");
+             //   NSLog(@"[BetterPlayer] ❌ Invalid content URL");
                 return nil;
             }
             
             MTSDKPalNonceRequestParamsBuilder *paramsBuilder = [[MTSDKPalNonceRequestParamsBuilder alloc] init];
             
             if (!paramsBuilder) {
-                NSLog(@"[BetterPlayer] ❌ Failed to create PAL params builder");
+          //      NSLog(@"[BetterPlayer] ❌ Failed to create PAL params builder");
                 return nil;
             }
             
@@ -339,16 +467,16 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             MTSDKPalNonceRequestParams *palNonceRequestParams = [paramsBuilder build];
             
             if (!palNonceRequestParams) {
-                NSLog(@"[BetterPlayer] ❌ Failed to build PAL nonce params");
+        //        NSLog(@"[BetterPlayer] ❌ Failed to build PAL nonce params");
                 return nil;
             }
             
-            NSLog(@"[BetterPlayer] ✅ PAL nonce params created successfully");
+          //  NSLog(@"[BetterPlayer] ✅ PAL nonce params created successfully");
             
             return palNonceRequestParams;
             
         } @catch (NSException *e) {
-            NSLog(@"[BetterPlayer] ❌ Exception in createPalNonceRequestParams: %@", e.reason);
+          //  NSLog(@"[BetterPlayer] ❌ Exception in createPalNonceRequestParams: %@", e.reason);
             return nil;
         }
     }
@@ -359,7 +487,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     - (MTSDKSessionConfiguration *)createMediaTailorSessionConfigWithContentURL:(NSString *)contentURL
     palNonceParams:(MTSDKPalNonceRequestParams *)palNonceParams {
         
-        NSLog(@"[BetterPlayer] Creating MediaTailor session config");
+     //   NSLog(@"[BetterPlayer] Creating MediaTailor session config");
         
         MTSDKSessionConfigurationBuilder *configBuilder = [[MTSDKSessionConfigurationBuilder alloc] init];
         
@@ -382,12 +510,12 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         
         //
         
-        NSLog(@"[BetterPlayer] 🧪 TEST 3: Calling createSessionConfig...");
+     //   NSLog(@"[BetterPlayer] 🧪 TEST 3: Calling createSessionConfig...");
         // TEST 3: Try to call createSessionConfig
         
       
         
-        NSLog(@"[BetterPlayer] Session config created");
+    //    NSLog(@"[BetterPlayer] Session config created");
         
         return sessionConfig;
     }
@@ -407,7 +535,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     videoExtension:(NSString *)videoExtension
     overriddenDuration:(int)overriddenDuration {
         
-        NSLog(@"[BetterPlayer] Handling successful MediaTailor session: %@", sessionId);
+     //   NSLog(@"[BetterPlayer] Handling successful MediaTailor session: %@", sessionId);
         
         // 1. Send success event to Flutter
         [self sendSSAISuccessEvent:originalURL.absoluteString
@@ -417,7 +545,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         // 2. Create player with ad-stitched URL
         NSURL *playbackNSURL = [NSURL URLWithString:playbackURL];
         if (!playbackNSURL) {
-            NSLog(@"[BetterPlayer] ERROR: Invalid playback URL");
+     //       NSLog(@"[BetterPlayer] ERROR: Invalid playback URL");
             [self sendSSAIFailureEvent:originalURL.absoluteString
                              sessionId:sessionId
                                  error:@"Invalid playback URL"];
@@ -456,7 +584,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                                  playbackURL:playbackURL
                                    sessionId:sessionId];
         
-        NSLog(@"[BetterPlayer] SSAI setup complete for session: %@", sessionId);
+     //   NSLog(@"[BetterPlayer] SSAI setup complete for session: %@", sessionId);
     }
 // Helper method to setup the player
 - (void)setupPlayerWithURL:(NSURL *)url
@@ -478,7 +606,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         self.overriddenDuration = overriddenDuration;
     }
     
-    NSLog(@"[BetterPlayer] ✅ SSAI player setup complete");
+  //  NSLog(@"[BetterPlayer] ✅ SSAI player setup complete");
 }
     // ============================================
     // FUNCTION 5: Send SSAI Success Event to Flutter
@@ -488,7 +616,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     playbackUrl:(NSString *)playbackUrl {
         
         if (!self.eventSink) {
-            NSLog(@"[BetterPlayer] WARNING: No eventSink to send success event");
+      //      NSLog(@"[BetterPlayer] WARNING: No eventSink to send success event");
             return;
         }
         
@@ -502,7 +630,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         
         self.eventSink(eventData);
         
-        NSLog(@"[BetterPlayer] Sent SSAI success event: %@", sessionId);
+     //   NSLog(@"[BetterPlayer] Sent SSAI success event: %@", sessionId);
     }
     
     // ============================================
@@ -511,15 +639,15 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     - (void)linkMediaTailorSessionToDatazoom:(MTSDKSession *)session
     originalURL:(NSString *)originalURLString { 
         
-        NSLog(@"[BetterPlayer] Linking MediaTailor session to Datazoom via Swift bridge");
+      //  NSLog(@"[BetterPlayer] Linking MediaTailor session to Datazoom via Swift bridge");
         
         if (!self.datazoomAdapter) {
-            NSLog(@"[BetterPlayer] ERROR: No Datazoom adapter available");
+         //   NSLog(@"[BetterPlayer] ERROR: No Datazoom adapter available");
             return;
         }
         
         if (!session) {
-            NSLog(@"[BetterPlayer] ERROR: No MediaTailor session to link");
+        //    NSLog(@"[BetterPlayer] ERROR: No MediaTailor session to link");
             return;
         }
         
@@ -532,7 +660,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                                                       videoUrl:originalURLString];
         
         if (success) {
-            NSLog(@"[BetterPlayer] ✅ MediaTailor session linked to Datazoom");
+        //    NSLog(@"[BetterPlayer] ✅ MediaTailor session linked to Datazoom");
             
             // Update metadata
             NSMutableDictionary *metadata = [NSMutableDictionary dictionaryWithDictionary:@{
@@ -549,7 +677,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             [datazoom setMetadataMetadata:metadata];
             
         } else {
-            NSLog(@"[BetterPlayer] ❌ ERROR: Failed to link MediaTailor session");
+         //   NSLog(@"[BetterPlayer] ❌ ERROR: Failed to link MediaTailor session");
         }
     }
     
@@ -559,11 +687,11 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     - (void)setupDatazoomWithPlayer:(AVPlayer *)player {
         
         if (!player) {
-            NSLog(@"[BetterPlayer] ERROR: No player to setup Datazoom");
+       //     NSLog(@"[BetterPlayer] ERROR: No player to setup Datazoom");
             return;
         }
         
-        NSLog(@"[BetterPlayer] Setting up Datazoom via Swift bridge");
+        // NSLog(@"[BetterPlayer] Setting up Datazoom via Swift bridge");
         
         // Get the Swift bridge
         DzBridge *bridge = [DzBridge shared];
@@ -573,9 +701,9 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         
         if (adapter) {
             self.datazoomAdapter = adapter;
-            NSLog(@"[BetterPlayer] ✅ Datazoom adapter created via bridge");
+           // NSLog(@"[BetterPlayer] ✅ Datazoom adapter created via bridge");
         } else {
-            NSLog(@"[BetterPlayer] ❌ ERROR: Failed to create Datazoom adapter");
+         //   NSLog(@"[BetterPlayer] ❌ ERROR: Failed to create Datazoom adapter");
         }
     }
     // ============================================
@@ -590,7 +718,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     videoExtension:(NSString *)videoExtension
     overriddenDuration:(int)overriddenDuration {
         
-        NSLog(@"[BetterPlayer] Falling back to regular HLS playback with key: %@", key);
+      //  NSLog(@"[BetterPlayer] Falling back to regular HLS playback with key: %@", key);
         
         // Use the existing regular player setup
         [self setupRegularPlayerWithURL:url
@@ -608,7 +736,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         // Setup Datazoom WITH the created player
         [self setupDatazoomWithPlayer:self.player];
         
-        NSLog(@"[BetterPlayer] Fallback to regular player complete");
+      //  NSLog(@"[BetterPlayer] Fallback to regular player complete");
     }
     
     // ============================================
@@ -631,7 +759,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         
         [[DzBaseDatazoom shared] setMetadataMetadata:metadata];
         
-        NSLog(@"[BetterPlayer] SSAI metadata set for session: %@", sessionId);
+       // NSLog(@"[BetterPlayer] SSAI metadata set for session: %@", sessionId);
     }
     
     // ============================================
@@ -654,7 +782,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             }
         }
         
-        NSLog(@"[BetterPlayer] SSAI setup failed: %@", errorMsg);
+       // NSLog(@"[BetterPlayer] SSAI setup failed: %@", errorMsg);
         
         // Send failure event to Flutter
         [self sendSSAIFailureEvent:originalURL.absoluteString
@@ -680,7 +808,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     error:(NSString *)error {
         
         if (!self.eventSink) {
-            NSLog(@"[BetterPlayer] WARNING: No eventSink to send failure event");
+          //  NSLog(@"[BetterPlayer] WARNING: No eventSink to send failure event");
             return;
         }
         
@@ -700,12 +828,10 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         
         self.eventSink(eventData);
         
-        NSLog(@"[BetterPlayer] Sent SSAI failure event: %@", error);
+     //   NSLog(@"[BetterPlayer] Sent SSAI failure event: %@", error);
     }
     
-    // ============================================
-    // MASTER FUNCTION: attemptSSAISetupWithURL (Refactored)
-    // ============================================
+    
 - (void)attemptSSAISetupWithURL:(NSURL *)url
     withKey:(NSString*)key
     headers:(NSDictionary*)headers
@@ -715,7 +841,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     videoExtension:(NSString*)videoExtension
     overriddenDuration:(int)overriddenDuration {
         
-        NSLog(@"[BetterPlayer] 🔄 Attempting SSAI setup for: %@", url.absoluteString);
+       // NSLog(@"[BetterPlayer] 🔄 Attempting SSAI setup for: %@", url.absoluteString);
         
         @try {
             // Initialize DatazoomWrapper
@@ -723,7 +849,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                 self.datazoomWrapper = [[DatazoomWrapper alloc] init];
             }
             
-            NSLog(@"[BetterPlayer] 📤 Calling createMediaTailorSession...");
+        //    NSLog(@"[BetterPlayer] 📤 Calling createMediaTailorSession...");
             
             __weak typeof(self) weakSelf = self;
             
@@ -733,15 +859,15 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                  
                  __strong typeof(self) strongSelf = weakSelf;
                  if (!strongSelf) {
-                     NSLog(@"[BetterPlayer] ❌ Self deallocated during callback");
+                   //  NSLog(@"[BetterPlayer] ❌ Self deallocated during callback");
                      return;
                  }
                  
-                 NSLog(@"[BetterPlayer] ========================================");
+                NSLog(@"[BetterPlayer] ========================================");
                  NSLog(@"[BetterPlayer] ✅ SSAI SUCCESS");
                  NSLog(@"[BetterPlayer] ========================================");
                  NSLog(@"[BetterPlayer]   - Playback URL: %@", mtSessionUrl);
-                 NSLog(@"[BetterPlayer]   - Session: %@", session);
+             //    NSLog(@"[BetterPlayer]   - Session: %@", session);
                  
                  // Handle successful session creation
                  [strongSelf handleMediaTailorSessionSuccessWithOriginalURL:url
@@ -760,14 +886,14 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                  
                  __strong typeof(self) strongSelf = weakSelf;
                  if (!strongSelf) {
-                     NSLog(@"[BetterPlayer] ❌ Self deallocated during callback");
+                //     NSLog(@"[BetterPlayer] ❌ Self deallocated during callback");
                      return;
                  }
                  
-                 NSLog(@"[BetterPlayer] ========================================");
-                 NSLog(@"[BetterPlayer] ❌ SSAI FAILED");
-                 NSLog(@"[BetterPlayer] ========================================");
-                 NSLog(@"[BetterPlayer]   - Error: %@", errorMessage);
+              //   NSLog(@"[BetterPlayer] ========================================");
+              //   NSLog(@"[BetterPlayer] ❌ SSAI FAILED");
+              //   NSLog(@"[BetterPlayer] ========================================");
+              //   NSLog(@"[BetterPlayer]   - Error: %@", errorMessage);
                  
                  // Fallback to regular playback
                  [strongSelf fallbackToRegularPlayerWithURL:url
@@ -781,13 +907,13 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
              }];  // Close the createMediaTailorSessionWithUrl call
             
         } @catch (NSException *e) {
-            NSLog(@"[BetterPlayer] ❌ EXCEPTION in SSAI setup: %@", e.reason);
+         //   NSLog(@"[BetterPlayer] ❌ EXCEPTION in SSAI setup: %@", e.reason);
             [self fallbackToRegularPlayerWithURL:url withKey:key headers:headers
                                         cacheKey:cacheKey cacheManager:cacheManager
                                         useCache:useCache videoExtension:videoExtension
                               overriddenDuration:overriddenDuration];
         }
-    }  // Close attemptSSAISetupWithURL method
+    }   
     
     // ============================================
     // CORRECT: setupRegularPlayerWithURL (Standalone Implementation)
@@ -803,7 +929,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     cacheManager:(CacheManager*)cacheManager
     overriddenDuration:(int)overriddenDuration {
         
-        NSLog(@"[BetterPlayer] Setting up regular player for: %@ with key: %@", url.absoluteString, key);
+      //  NSLog(@"[BetterPlayer] Setting up regular player for: %@ with key: %@", url.absoluteString, key);
         // Reset overridden duration
         _overriddenDuration = 0;
         
@@ -924,7 +1050,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             // Clear the adapter reference
             self.datazoomAdapter = nil;
             
-            NSLog(@"[BetterPlayer] Datazoom resources cleaned up");
+          //  NSLog(@"[BetterPlayer] Datazoom resources cleaned up");
         }
     }
     // Helper to get a unique player ID
@@ -1080,7 +1206,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             switch (item.status) {
                 case AVPlayerItemStatusFailed:
                     NSLog(@"Failed to load video:");
-                    NSLog(item.error.debugDescription);
+              NSLog(item.error.debugDescription);
                     
                     if (_eventSink != nil) {
                         _eventSink([FlutterError

@@ -13,17 +13,17 @@ import MediaTailorSDK
     // Private initializer to enforce singleton
     private override init() {
         super.init()
-        print("[DzBridge] Initialized")
+       // print("[DzBridge] Initialized")
     }
     
     // MARK: - AVPlayer Adapter Creation
     @objc(createAdapterWithPlayer:)
     public func createAdapter(player: AVPlayer) -> Any? {
-        print("[DzBridge] Creating adapter for player")
+       // print("[DzBridge] Creating adapter for player")
         
         // 1. Get the shared Datazoom instance
         let datazoom = DzBase.Datazoom.shared
-        print("[DzBridge] Datazoom instance: \(datazoom)")
+      //  print("[DzBridge] Datazoom instance: \(datazoom)")
         
         // 2. Create base context (event space)
         let eventSpace = datazoom.createBaseContext()
@@ -31,7 +31,7 @@ import MediaTailorSDK
         // 3. Create adapter with player and event space
         let adapter = datazoom.createContext(player: player, eventSpace: eventSpace)
         
-        print("[DzBridge] ✅ Adapter created successfully")
+      //  print("[DzBridge] ✅ Adapter created successfully")
         return adapter
     }
     
@@ -41,16 +41,18 @@ import MediaTailorSDK
                                     session: Any,
                                     videoUrl: String,
                                     videoPlayerView: Any?) -> Bool {
-        print("[DzBridge] Configuring MediaTailor for: \(videoUrl)")
+      //  print("[DzBridge] Configuring MediaTailor for: \(videoUrl)")
         
         // 1. Type casting with validation
-        guard let dzAdapter = adapter as? DzBase.DzAdapter else {
-            print("[DzBridge] ERROR: adapter is not DzBase.DzAdapter type")
+    //    guard let dzAdapter = adapter as? DzBase.DzAdapter else {
+        guard let dzAdapter = adapter as? DzAdapter else {
+     //       print("[DzBridge] ERROR: adapter is not DzBase.DzAdapter type")
             return false
         }
         
-        guard let mtSession = session as? MediaTailorSDK.Session else {
-            print("[DzBridge] ERROR: session is not MediaTailorSDK.Session type")
+     //   guard let mtSession = session as? MediaTailorSDK.Session else {
+        guard let mtSession = session as? Session else {
+      //      print("[DzBridge] ERROR: session is not MediaTailorSDK.Session type")
             return false
         }
         
@@ -58,10 +60,10 @@ import MediaTailorSDK
         let playerView: UIView
         if let providedView = videoPlayerView as? UIView {
             playerView = providedView
-            print("[DzBridge] Using provided player view")
+     //       print("[DzBridge] Using provided player view")
         } else {
             playerView = UIView() // Placeholder view
-            print("[DzBridge] Using placeholder view")
+        //    print("[DzBridge] Using placeholder view")
         }
         
         // 3. Call the Swift-only method
@@ -70,7 +72,7 @@ import MediaTailorSDK
                                     videoPlayerView: playerView,
                                     friendlyObstructionsView: nil)
         
-        print("[DzBridge] ✅ MediaTailor configured")
+     //   print("[DzBridge] ✅ MediaTailor configured")
         return true
     }
     
@@ -87,17 +89,17 @@ import MediaTailorSDK
     // MARK: - Remove MediaTailor Session
     @objc(removeMediaTailorSessionWithAdapter:)
     public func removeMediaTailorSession(adapter: Any) -> Bool {
-        print("[DzBridge] Removing MediaTailor session")
+     //   print("[DzBridge] Removing MediaTailor session")
         
         guard let dzAdapter = adapter as? DzBase.DzAdapter else {
-            print("[DzBridge] ERROR: Invalid adapter type for removal")
+        //    print("[DzBridge] ERROR: Invalid adapter type for removal")
             return false
         }
         
         // Call the Swift-only method
         dzAdapter.removeMediaTailorSession()
         
-        print("[DzBridge] ✅ MediaTailor session removed")
+       // print("[DzBridge] ✅ MediaTailor session removed")
         return true
     }
     
