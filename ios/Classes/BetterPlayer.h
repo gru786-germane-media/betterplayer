@@ -10,6 +10,13 @@
 #import "BetterPlayerTimeUtils.h"
 #import "BetterPlayerView.h"
 #import "BetterPlayerEzDrmAssetsLoaderDelegate.h"
+#import "DataZoomSwiftBridge.h"  // ✅ ADDED
+
+// Add Datazoom imports
+#import <DzBase/DzBase.h>
+
+//#import <DzMediaTailorAdapter/DzMediaTailorAdapter.h>
+// #import <MediaTailorSDK/MediaTailorSDK.h>
 
 // Add Datazoom imports
 #import <DzBase/DzBase.h>

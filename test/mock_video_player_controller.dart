@@ -59,6 +59,7 @@ class MockVideoPlayerController extends VideoPlayerController {
     VideoFormat? formatHint,
     Map<String, String?>? headers,
     bool useCache = false,
+    bool shouldEnableSSAI = false,
     int? maxCacheSize,
     int? maxCacheFileSize,
     String? cacheKey,

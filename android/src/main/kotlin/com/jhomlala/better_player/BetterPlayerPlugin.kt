@@ -27,6 +27,16 @@ import io.flutter.view.TextureRegistry
 import java.lang.Exception
 import java.util.HashMap
 
+// Add Datazoom imports
+import io.datazoom.sdk.Datazoom
+import io.datazoom.sdk.Config
+import io.datazoom.sdk.logs.LogLevel as DataZoomLogLevel
+import io.datazoom.sdk.BaseContextFactory
+import io.datazoom.sdk.BaseContext
+import com.amazon.mediatailorsdk.MediaTailor
+import com.amazon.mediatailorsdk.logs.LogLevel as MediaTailorLogLevel
+import com.amazon.mediatailorsdk.PalConsentSettings
+
 /**
  * Android platform implementation of the VideoPlayerPlugin.
  */
@@ -39,6 +49,10 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     private var activity: Activity? = null
     private var pipHandler: Handler? = null
     private var pipRunnable: Runnable? = null
+
+    private var baseContext: BaseContext? = null
+    private var isDatazoomInitialized = false
+
     override fun onAttachedToEngine(binding: FlutterPluginBinding) {
         val loader = FlutterLoader()
         flutterState = FlutterState(
@@ -60,8 +74,45 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             binding.textureRegistry
         )
         flutterState?.startListening(this)
+
+        // Initialize Datazoom once when plugin attaches
+        initializeDatazoom(binding.applicationContext)
     }
 
+    private fun initializeDatazoom(context: Context) {
+        if (!isDatazoomInitialized) {
+            try {
+                Log.d(TAG, "Initializing Datazoom...")
+
+                // Create base context
+                baseContext = BaseContextFactory.create()
+
+                // Initialize Datazoom with config
+                val configId = BuildConfig.DATAZOOM_CONFIG_ID
+                val config = Config.Builder(configId)
+                    .logLevel(DataZoomLogLevel.VERBOSE)
+                    .build()
+
+                Datazoom.init(config)
+
+                // Initialize MediaTailor logging
+                MediaTailor.setLogLevel(MediaTailorLogLevel.DEBUG)
+
+                // Initialize PAL (Privacy and Advertising)
+                val palConsentSettings = PalConsentSettings.Builder()
+                    .allowStorage(true) // Note: This must be based on user consents
+                    .directedForChildOrUnknownAge(false)
+                    .build()
+
+                MediaTailor.initPal(context.applicationContext, palConsentSettings)
+
+                isDatazoomInitialized = true
+                Log.d(TAG, "Datazoom and MediaTailor initialized successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize Datazoom: ${e.message}", e)
+            }
+        }
+    }
 
     override fun onDetachedFromEngine(binding: FlutterPluginBinding) {
         if (flutterState == null) {
@@ -116,8 +167,12 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                     )
                 }
                 val player = BetterPlayer(
-                    flutterState?.applicationContext!!, eventChannel, handle,
-                    customDefaultLoadControl, result
+                    flutterState?.applicationContext!!,
+                    eventChannel,
+                    handle,
+                    customDefaultLoadControl,
+                    result,
+                    this // Pass plugin reference for Datazoom context
                 )
                 videoPlayers.put(handle.id(), player)
             }
@@ -258,7 +313,8 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 0L,
                 overriddenDuration.toLong(),
                 null,
-                null, null, null
+                null, null, null,
+                false // shouldEnableSSAI is false for assets
             )
         } else {
             val useCache = getParameter(dataSource, USE_CACHE_PARAMETER, false)
@@ -274,6 +330,8 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             val clearKey = getParameter<String?>(dataSource, DRM_CLEARKEY_PARAMETER, null)
             val drmHeaders: Map<String, String> =
                 getParameter(dataSource, DRM_HEADERS_PARAMETER, HashMap())
+            val shouldEnableSSAI = getParameter(dataSource, SSAI_ENABLED_PARAMETER, false)
+
             player.setDataSource(
                 flutterState!!.applicationContext,
                 key,
@@ -288,7 +346,8 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 licenseUrl,
                 drmHeaders,
                 cacheKey,
-                clearKey
+                clearKey,
+                shouldEnableSSAI
             )
         }
     }
@@ -389,6 +448,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             videoPlayers.valueAt(index).disposeRemoteNotifications()
         }
     }
+
     @Suppress("UNCHECKED_CAST")
     private fun <T> getParameter(parameters: Map<String, Any?>?, key: String, defaultValue: T): T {
         if (parameters?.containsKey(key) == true) {
@@ -399,7 +459,6 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         }
         return defaultValue
     }
-
 
     private fun isPictureInPictureSupported(): Boolean {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && activity != null && activity!!.packageManager
@@ -512,6 +571,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         private const val DRM_HEADERS_PARAMETER = "drmHeaders"
         private const val DRM_CLEARKEY_PARAMETER = "clearKey"
         private const val MIX_WITH_OTHERS_PARAMETER = "mixWithOthers"
+        private const val SSAI_ENABLED_PARAMETER = "shouldEnableSSAI" // New parameter
         const val URL_PARAMETER = "url"
         const val PRE_CACHE_SIZE_PARAMETER = "preCacheSize"
         const val MAX_CACHE_SIZE_PARAMETER = "maxCacheSize"
