@@ -65,13 +65,68 @@ import java.lang.IllegalStateException
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
+
+
+
+
 import io.datazoom.sdk.mediatailor.setupAdSession
-import io.datazoom.sdk.base.Datazoom
-import io.datazoom.sdk.base.Config
-import io.datazoom.sdk.base.LogLevel
-import io.datazoom.sdk.mediatailor.MediaTailor
-import io.datazoom.sdk.mediatailor.SessionConfiguration
-import io.datazoom.sdk.mediatailor.setupAdSession
+import io.datazoom.sdk.Datazoom
+import io.datazoom.sdk.Config
+
+import com.amazon.mediatailorsdk.logs.LogLevel as MediaTailorLogLevel
+import io.datazoom.sdk.logs.LogLevel as DataZoomLogLevel
+
+import io.datazoom.sdk.mediatailor.*
+// import io.datazoom.sdk.mediatailor.MediaTailor
+
+// import io.datazoom.sdk.mediatailor.SessionConfiguration
+// import io.datazoom.sdk.Datazoom
+// import io.datazoom.sdk.mediatailor.BuildConfig
+// import io.datazoom.sdk.mediatailor.MediaTailorKt
+ // import io.datazoom.sdk.BaseContextFactory
+// import io.datazoom.sdk.BaseContext
+// import io.datazoom.sdk.player.PlayerAdapter
+// import io.datazoom.sdk.player.DzPlayer
+
+// import android.view.View
+
+ import com.amazon.mediatailorsdk.SessionConfiguration
+// import com.amazon.mediatailorsdk.MediaTailorCommon
+ import com.amazon.mediatailorsdk.MediaTailor
+ import com.amazon.mediatailorsdk.Session
+ import com.amazon.mediatailorsdk.SessionCommon
+ import com.amazon.mediatailorsdk.SessionError
+// import com.amazon.mediatailorsdk.setupAdSession
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
+
+
+
+import kotlin.jvm.functions.Function2
+import kotlin.Unit
+
+
+import com.google.android.exoplayer2.ui.PlayerView
+import com.google.android.exoplayer2.ui.R.color
+
+
+import io.datazoom.sdk.*;
+import io.datazoom.sdk.BaseContextFactory
+import io.datazoom.sdk.BaseContext
+import io.datazoom.sdk.DzAdapter
+//import io.datazoom.sdk.exoplayer.ExtensionsKt
+import io.datazoom.sdk.exoplayer.*
+import io.datazoom.sdk.exoplayer.createContext // Extension function import
+import io.datazoom.sdk.SdkEvent
+
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
+
+
+import com.amazon.mediatailorsdk.PalConsentSettings
+
+import android.content.*;
+import com.amazon.mediatailorsdk.PalNonceRequestParams;
 
 
 internal class BetterPlayer(
@@ -81,6 +136,8 @@ internal class BetterPlayer(
     customDefaultLoadControl: CustomDefaultLoadControl?,
     result: MethodChannel.Result
 ) {
+    private val TAG = "BetterPlayerConfig"
+
     private val exoPlayer: ExoPlayer?
     private val eventSink = QueuingEventSink()
     private val trackSelector: DefaultTrackSelector = DefaultTrackSelector(context)
@@ -101,7 +158,53 @@ internal class BetterPlayer(
         customDefaultLoadControl ?: CustomDefaultLoadControl()
     private var lastSendBufferedPosition = 0L
 
+
+    //START MEDIA TAYLOR integration
+
+
+
+    private var dataZoomDzAdapter: DzAdapter? = null
+    private var playerView: PlayerView? = null
+
+
+
+    //END MEDIA TAYLOR integration
+
+
+
     init {
+        Log.d(TAG, "Debug: Init State 1")
+
+        Log.d(TAG, "Debug: Will get networkInfoData")
+
+        var info = getNetworkInfo();
+        Log.d(TAG, "Debug: result networkInfoData :")
+
+        // Print full session details
+        printObjectDetails(info, "getNetworkInfo()")
+        //START MEDIA TAYLOR integration
+        val configId = BuildConfig.DATAZOOM_CONFIG_ID
+        var baseContext =  BaseContextFactory.create()
+        Log.d(TAG, "Debug: Init State 2 configId:")
+
+        var oldConfig = Config.Builder(configId)
+        Log.d(TAG, "Debug: Init State 3")
+        var newConfig = oldConfig.logLevel(DataZoomLogLevel.VERBOSE)
+        var newConfig2 = newConfig.build()
+        Log.d(TAG, "Debug: Init State 4")
+        var datazoom =  Datazoom.init(newConfig2)
+
+
+//       var datazoom =  Datazoom.init(newConfig.build())
+        Log.d(TAG, "Debug: Init State 5")
+
+
+        MediaTailor.setLogLevel(MediaTailorLogLevel.DEBUG)
+        Log.d(TAG, "Debug: Init State 6")
+
+        //END MEDIA TAYLOR integration
+
+
         val loadBuilder = DefaultLoadControl.Builder()
         loadBuilder.setBufferDurationsMs(
             this.customDefaultLoadControl.minBufferMs,
@@ -109,29 +212,83 @@ internal class BetterPlayer(
             this.customDefaultLoadControl.bufferForPlaybackMs,
             this.customDefaultLoadControl.bufferForPlaybackAfterRebufferMs
         )
+        Log.d(TAG, "Debug: Init State 7")
         loadControl = loadBuilder.build()
         exoPlayer = ExoPlayer.Builder(context)
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
             .build()
 
-        val configId = BuildConfig.DATAZOOM_CONFIG_ID
-        if (!Datazoom.isInitialized()) {
-            Datazoom.init(
-                Config.Builder(configId)
-                    .logLevel(LogLevel.VERBOSE)
-                    .build()
-            )
-        }
-            
-            
+        Log.d(TAG, "Debug: Init State 8")
 
-        val playerContext = Datazoom.createContext(exoPlayer)
+
+        //START MEDIA TAYLOR integration
+        playerView = PlayerView(context).apply {
+            useController = false
+            player = exoPlayer
+//            visibility = View.GONE // hide if Flutter renders video via texture
+
+            // Additional optimizations
+//            setShutterBackgroundColor(color.TRANSPARENT)
+            useArtwork = false
+        }
+        Log.d(TAG, "Debug: Init State 9")
+
+
+
+
+        Log.d(TAG, "Debug: Init State 10")
+
+//        var dzAdaptor = DzAdapter.DzAdapter(baseContext);
+//        var dzAdaptor = ExtensionsKt.createContext(datazoom,exoPlayer,baseContext);
+//        val dzAdapter = datazoom.createContext(exoPlayer, baseContext)
+
+//          dataZoomDzAdapter = Datazoom.createContext(dzAdaptor)
+
+
+        dataZoomDzAdapter = Datazoom.createContext(exoPlayer, baseContext)
+        Log.d(TAG, "Debug: Init State 11")
+
+//        dataZoomDzAdapter = datazoom.createContext(exoPlayer, baseContext)
+        //END MEDIA TAYLOR integration
         
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         setupVideoPlayer(eventChannel, textureEntry, result)
+        Log.d(TAG, "Debug: Init State 12")
     }
+
+fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
+    try {
+        val sb = StringBuilder()
+        sb.append("\n=== ${obj.javaClass.simpleName} Details ===\n")
+        
+        var currentClass: Class<*>? = obj.javaClass
+        while (currentClass != null && currentClass != Any::class.java) {
+            sb.append("Class: ${currentClass.name}\n")
+            
+            val fields = currentClass.declaredFields
+            for (field in fields) {
+                // Skip static fields
+                if (Modifier.isStatic(field.modifiers)) continue
+                
+                field.isAccessible = true
+                try {
+                    val value = field.get(obj)
+                    sb.append("  ${field.name}: ${value}\n")
+                } catch (e: Exception) {
+                    sb.append("  ${field.name}: [Error accessing: ${e.message}]\n")
+                }
+            }
+            sb.append("----------------------------\n")
+            currentClass = currentClass.superclass
+        }
+        
+        Log.d(tag, sb.toString())
+    } catch (e: Exception) {
+        Log.e(tag, "Error printing object details: ${e.message}")
+    }
+}
 
     fun setDataSource(
         context: Context,
@@ -151,90 +308,286 @@ internal class BetterPlayer(
     ) {
         this.key = key
         isInitialized = false
-        val uri = Uri.parse(dataSource)
-        var dataSourceFactory: DataSource.Factory?
-        val userAgent = getUserAgent(headers)
-        if (licenseUrl != null && licenseUrl.isNotEmpty()) {
-            val httpMediaDrmCallback =
-                HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
-            if (drmHeaders != null) {
-                for ((drmKey, drmValue) in drmHeaders) {
-                    httpMediaDrmCallback.setKeyRequestProperty(drmKey, drmValue)
-                }
+
+
+//        val uri = Uri.parse(dataSource)
+
+        //START MEDIA TAYLOR integration
+        Log.d(TAG, "Debug: Init State 13")
+
+        var newDataSource =
+        //new url delivered on 20th dec
+         "https://dfqqzowu2qhqt.cloudfront.net/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/vast-ad-tag-issue-2/v1/channel/testChannel2/germane.m3u8?";
+
+
+        //new url for testing has 2 min ads after every 2 min
+        //"https://ddr77abvwj7xa.cloudfront.net/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/vast-ad-tag-issue/v1/channel/testChannel/germane.m3u8";
+            // "https://6e257b305cad46efb629942e423818a9.mediatailor.ap-south-1.amazonaws.com/v1/session/071c0467fcd02420cdf0d8a1ca3524b96c27a151/comedy_king/OTM/OTM_ComedyKing-SCTE_SWIFT/playlist.m3u8"
+        Log.d(TAG, "Debug: Init State 14")
+
+
+
+        val palConsentSettings = PalConsentSettings.Builder()
+            .allowStorage(true) // Note that this value must be based on user consents
+            .directedForChildOrUnknownAge(false)
+            .build()
+
+        MediaTailor.initPal(context.applicationContext, palConsentSettings)
+
+
+        val palNonceRequestParams = PalNonceRequestParams.Builder()
+            .adWillAutoPlay(true)
+            .adWillPlayMuted(false)
+            .descriptionUrl("https://playswift.tv")
+            .iconsSupported(true)
+            .playerType("ExoPlayer")
+            .playerVersion("0.0.12")
+            .ppid("12345")
+            .videoHeight(1080)
+            .videoWidth(1920)
+            .omidPartnerName("amazon2")
+            .omidPartnerVersion("1.0.0")
+            .build()
+
+
+
+
+        var configBuilder = SessionConfiguration.Builder()
+            .sessionInitUrl(newDataSource)
+        Log.d(TAG, "Debug: Init State 15")
+        configBuilder.palNonceRequestParams(palNonceRequestParams)
+
+        fun onSessionCreationOK(session: Session) {
+            Log.d(TAG, "Debug: onSessionCreationOK onSessionCreationOK onSessionCreationOK")
+            Log.d(TAG, "Debug: Init State 18")
+
+    // Print full session details
+    printObjectDetails(session, "SessionDebug")
+                //val  getPlaybackUrl = session.getPlaybackUrl
+            //val  getTrackingUrl = session.getTrackingUrl
+            
+            //Log.d(TAG, "Playback URL: ${getPlaybackUrl}")
+            //Log.d(TAG, "Tracking URL: ${getTrackingUrl}")
+
+            var usedDataSourceString =  newDataSource
+            Log.d(TAG, "Debug: Init State 18.1")
+            if(session.playbackUrl == null){
+                Log.d(TAG, "Debug: Init State 18.1.1")
+            }else{
+                Log.d(TAG, "Debug: Init State 18.2")
+                usedDataSourceString = session.playbackUrl!!;
             }
-            if (Util.SDK_INT < 18) {
-                Log.e(TAG, "Protected content not supported on API levels below 18")
-                drmSessionManager = null
-            } else {
-                val drmSchemeUuid = Util.getDrmUuid("widevine")
-                if (drmSchemeUuid != null) {
-                    drmSessionManager = DefaultDrmSessionManager.Builder()
-                        .setUuidAndExoMediaDrmProvider(
-                            drmSchemeUuid
-                        ) { uuid: UUID? ->
-                            try {
-                                val mediaDrm = FrameworkMediaDrm.newInstance(uuid!!)
-                                // Force L3.
-                                mediaDrm.setPropertyString("securityLevel", "L3")
-                                return@setUuidAndExoMediaDrmProvider mediaDrm
-                            } catch (e: UnsupportedDrmException) {
-                                return@setUuidAndExoMediaDrmProvider DummyExoMediaDrm()
+            Log.d(TAG, "Debug: Init State 18.3")
+            if(session == null){
+                Log.d(TAG, "Debug: Init State 18.3.1")
+
+            }else{
+                Log.d(TAG, "Debug: Init State 18.4")
+               dataZoomDzAdapter!!.setupAdSession(session, playerView!!, usedDataSourceString)
+            }
+
+            Log.d(TAG, "Debug: Init State 18.5")
+            val uri = Uri.parse(usedDataSourceString)
+            Log.d(TAG, "Debug: Init State 18.6")
+            var dataSourceFactory: DataSource.Factory?
+            Log.d(TAG, "Debug: Init State 18.7")
+            val userAgent = getUserAgent(headers)
+            Log.d(TAG, "Debug: Init State 18.8")
+            if (licenseUrl != null && licenseUrl.isNotEmpty()) {
+                val httpMediaDrmCallback =
+                    HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
+                if (drmHeaders != null) {
+                    for ((drmKey, drmValue) in drmHeaders) {
+                        httpMediaDrmCallback.setKeyRequestProperty(drmKey, drmValue)
+                    }
+                }
+                if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    drmSessionManager = null
+                } else {
+                    val drmSchemeUuid = Util.getDrmUuid("widevine")
+                    if (drmSchemeUuid != null) {
+                        drmSessionManager = DefaultDrmSessionManager.Builder()
+                            .setUuidAndExoMediaDrmProvider(
+                                drmSchemeUuid
+                            ) { uuid: UUID? ->
+                                try {
+                                    val mediaDrm = FrameworkMediaDrm.newInstance(uuid!!)
+                                    // Force L3.
+                                    mediaDrm.setPropertyString("securityLevel", "L3")
+                                    return@setUuidAndExoMediaDrmProvider mediaDrm
+                                } catch (e: UnsupportedDrmException) {
+                                    return@setUuidAndExoMediaDrmProvider DummyExoMediaDrm()
+                                }
                             }
-                        }
-                        .setMultiSession(false)
-                        .build(httpMediaDrmCallback)
+                            .setMultiSession(false)
+                            .build(httpMediaDrmCallback)
+                    }
                 }
             }
-        } else if (clearKey != null && clearKey.isNotEmpty()) {
-            drmSessionManager = if (Util.SDK_INT < 18) {
-                Log.e(TAG, "Protected content not supported on API levels below 18")
-                null
+            else if (clearKey != null && clearKey.isNotEmpty()) {
+                drmSessionManager = if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    null
+                } else {
+                    DefaultDrmSessionManager.Builder()
+                        .setUuidAndExoMediaDrmProvider(
+                            C.CLEARKEY_UUID,
+                            FrameworkMediaDrm.DEFAULT_PROVIDER
+                        ).build(LocalMediaDrmCallback(clearKey.toByteArray()))
+                }
             } else {
-                DefaultDrmSessionManager.Builder()
-                    .setUuidAndExoMediaDrmProvider(
-                        C.CLEARKEY_UUID,
-                        FrameworkMediaDrm.DEFAULT_PROVIDER
-                    ).build(LocalMediaDrmCallback(clearKey.toByteArray()))
+                drmSessionManager = null
             }
-        } else {
-            drmSessionManager = null
-        }
-        if (isHTTP(uri)) {
-            dataSourceFactory = getDataSourceFactory(userAgent, headers)
-            if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
-                dataSourceFactory = CacheDataSourceFactory(
-                    context,
-                    maxCacheSize,
-                    maxCacheFileSize,
-                    dataSourceFactory
-                )
+            Log.d(TAG, "Debug: Init State 18.9")
+            if (isHTTP(uri)) {
+                dataSourceFactory = getDataSourceFactory(userAgent, headers)
+                if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
+                    dataSourceFactory = CacheDataSourceFactory(
+                        context,
+                        maxCacheSize,
+                        maxCacheFileSize,
+                        dataSourceFactory
+                    )
+                }
+            } else {
+                dataSourceFactory = DefaultDataSource.Factory(context)
             }
-        } else {
-            dataSourceFactory = DefaultDataSource.Factory(context)
-        }
-        val mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, cacheKey, context)
-        if (overriddenDuration != 0L) {
-            val clippingMediaSource = ClippingMediaSource(mediaSource, 0, overriddenDuration * 1000)
-            exoPlayer?.setMediaSource(clippingMediaSource)
-        } else {
-            exoPlayer?.setMediaSource(mediaSource)
+            Log.d(TAG, "Debug: Init State 18.10")
+            val mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, cacheKey, context)
+            if (overriddenDuration != 0L) {
+                val clippingMediaSource = ClippingMediaSource(mediaSource, 0, overriddenDuration * 1000)
+                exoPlayer?.setMediaSource(clippingMediaSource)
+            } else {
+                exoPlayer?.setMediaSource(mediaSource)
+            }
+            Log.d(TAG, "Debug: Init State 18.11")
+            exoPlayer?.prepare()
+            Log.d(TAG, "Debug: Init State 18.12")
+            result.success(null)
+
         }
 
-        // --- Datazoom MediaTailor Session Initialization ---
-        val sessionConfig = SessionConfiguration.Builder()
-        .sessionInitUrl(dataSource) // Use the content URL
-        .build()
+        fun onSessionCreationError(error: SessionError) {
+            Log.d(TAG, "Debug: onSessionCreationError onSessionCreationError onSessionCreationError") 
+         
 
-        MediaTailor.createSession(sessionConfig) { session, error ->
-            if (error != null) {
-                Log.e(TAG, "Datazoom session error: $error")
-            } else if (session != null) {
-                playerContext?.setupAdSession(session, null, dataSource)
+        // Print error details too
+        printObjectDetails(error, "SessionError")         
+         //   val  getCode = error.getCode
+           // val  getMessage = error.getMessage
+            
+           // Log.d(TAG, "Error getCode: ${getCode}")
+           // Log.d(TAG, "Error getMessage: ${getMessage}")
+            Log.d(TAG, "Debug: Init State 19.1")
+            val uri = Uri.parse(newDataSource)
+            Log.d(TAG, "Debug: Init State 19.2")
+            var dataSourceFactory: DataSource.Factory?
+            val userAgent = getUserAgent(headers)
+            Log.d(TAG, "Debug: Init State 19.3")
+            if (licenseUrl != null && licenseUrl.isNotEmpty()) {
+                val httpMediaDrmCallback =
+                    HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
+                if (drmHeaders != null) {
+                    for ((drmKey, drmValue) in drmHeaders) {
+                        httpMediaDrmCallback.setKeyRequestProperty(drmKey, drmValue)
+                    }
+                }
+                if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    drmSessionManager = null
+                } else {
+                    val drmSchemeUuid = Util.getDrmUuid("widevine")
+                    if (drmSchemeUuid != null) {
+                        drmSessionManager = DefaultDrmSessionManager.Builder()
+                            .setUuidAndExoMediaDrmProvider(
+                                drmSchemeUuid
+                            ) { uuid: UUID? ->
+                                try {
+                                    val mediaDrm = FrameworkMediaDrm.newInstance(uuid!!)
+                                    // Force L3.
+                                    mediaDrm.setPropertyString("securityLevel", "L3")
+                                    return@setUuidAndExoMediaDrmProvider mediaDrm
+                                } catch (e: UnsupportedDrmException) {
+                                    return@setUuidAndExoMediaDrmProvider DummyExoMediaDrm()
+                                }
+                            }
+                            .setMultiSession(false)
+                            .build(httpMediaDrmCallback)
+                    }
+                }
+            }
+            else if (clearKey != null && clearKey.isNotEmpty()) {
+                drmSessionManager = if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    null
+                } else {
+                    DefaultDrmSessionManager.Builder()
+                        .setUuidAndExoMediaDrmProvider(
+                            C.CLEARKEY_UUID,
+                            FrameworkMediaDrm.DEFAULT_PROVIDER
+                        ).build(LocalMediaDrmCallback(clearKey.toByteArray()))
+                }
+            } else {
+                drmSessionManager = null
+            }
+            Log.d(TAG, "Debug: Init State 19.4")
+
+            if (isHTTP(uri)) {
+                dataSourceFactory = getDataSourceFactory(userAgent, headers)
+                if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
+                    dataSourceFactory = CacheDataSourceFactory(
+                        context,
+                        maxCacheSize,
+                        maxCacheFileSize,
+                        dataSourceFactory
+                    )
+                }
+            } else {
+                dataSourceFactory = DefaultDataSource.Factory(context)
+            }
+            Log.d(TAG, "Debug: Init State 19.5")
+            val mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, cacheKey, context)
+            if (overriddenDuration != 0L) {
+                val clippingMediaSource = ClippingMediaSource(mediaSource, 0, overriddenDuration * 1000)
+                exoPlayer?.setMediaSource(clippingMediaSource)
+            } else {
+                exoPlayer?.setMediaSource(mediaSource)
+            }
+            Log.d(TAG, "Debug: Init State 19.6")
+            exoPlayer?.prepare()
+            Log.d(TAG, "Debug: Init State 19.7")
+            result.success(null)
+
+        }
+
+        MediaTailor.createSession(configBuilder.build()) { session, error ->
+            Log.d(TAG, "Debug: Init State 16")
+
+            if (error == null) {
+                Log.d(TAG, "Debug: Init State 17.1")
+
+                if(session == null){
+                    Log.d(TAG, "Debug: Init State 17.2")
+
+                }else{
+                    Log.d(TAG, "Debug: Init State 17")
+
+                onSessionCreationOK(session!!)
+                }
+            }
+            else {
+                Log.d(TAG, "Debug: Init State 17.0")
+
+                onSessionCreationError(error)
             }
         }
-        // --- End of Datazoom Integration ---
-        exoPlayer?.prepare()
-        result.success(null)
+
+
+
+        Log.d(TAG, "Debug: Init State 20")
+
+
     }
 
     fun setupPlayerNotification(

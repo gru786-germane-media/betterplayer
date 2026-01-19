@@ -25,7 +25,6 @@ allprojects {
 
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
     namespace 'com.jhomlala.better_player'
@@ -77,6 +76,8 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
 
     // Datazoom
-    implementation 'io.datazoom.sdk:base-android:4.1.18'
-    implementation 'io.datazoom.sdk:mediatailor:0.0.18'
+    implementation "io.datazoom.sdk:base-android:4.1.18"
+    implementation "io.datazoom.sdk:mediatailor:0.0.19"
+    implementation("io.datazoom.sdk:exoplayer:0.0.12")
+    implementation "io.datazoom.mediatailorsdk:mediatailorsdk-android:1.0.3"
 }

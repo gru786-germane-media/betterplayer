@@ -446,6 +446,7 @@ class BetterPlayerController {
           headers: _getHeaders(),
           useCache:
               _betterPlayerDataSource!.cacheConfiguration?.useCache ?? false,
+          shouldEnableSSAI: _betterPlayerDataSource!.shouldEnableSSAI ?? false,
           maxCacheSize:
               _betterPlayerDataSource!.cacheConfiguration?.maxCacheSize ?? 0,
           maxCacheFileSize:

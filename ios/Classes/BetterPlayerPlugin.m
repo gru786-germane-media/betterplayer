@@ -4,6 +4,8 @@
 
 #import "BetterPlayerPlugin.h"
 #import <better_player/better_player-Swift.h>
+#import <DzBase/DzBase.h>  // Add Datazoom import
+#import <Foundation/Foundation.h>
 
 #if !__has_feature(objc_arc)
 #error Code Requires ARC.
@@ -19,9 +21,170 @@ int texturesCount = -1;
 BetterPlayer* _notificationPlayer;
 bool _remoteCommandsInitialized = false;
 
+#pragma mark - Plugin Registration
+// ============================================
+// STEP 1: Datazoom Initialization (CLASS METHOD)
+// ============================================
++ (void)initializeDatazoomSDK {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+      //  NSLog(@"[BetterPlayerPlugin] 🚀 Starting Datazoom SDK initialization");
+        
+        @try {
+            // YOUR ACTUAL CONFIG ID - REPLACE THIS
+            NSString *configurationId = @"9c1f222a-49ca-4933-8072-c4eb6675ece4";
+            
+         //   NSLog(@"[BetterPlayerPlugin] Using Configuration ID: %@", configurationId);
+            
+            // ========== STEP 1: Create ConfigBuilder with Configuration ID ==========
+         //   NSLog(@"[BetterPlayerPlugin] Step 1: Creating DzBaseConfigBuilder");
+            
+            DzBaseConfigBuilder *configBuilder = [[DzBaseConfigBuilder alloc] 
+                initWithConfigurationId:configurationId];
+            
+            if (!configBuilder) {
+          //      NSLog(@"[BetterPlayerPlugin] ❌ Failed to create ConfigBuilder");
+                return;
+            }
+            
+          //  NSLog(@"[BetterPlayerPlugin] ✅ ConfigBuilder created: %@", configBuilder);
+            
+            // ========== STEP 2: Set Log Level ==========
+          //  NSLog(@"[BetterPlayerPlugin] Step 2: Setting log level to verbose");
+            
+            // IMPORTANT: logLevel expects DzBaseLogLevel object (it's an enum wrapper)
+            // Pass DzBaseLogLevel.verbose (note: it's an @property that returns DzBaseLogLevel *)
+            [configBuilder logLevelLogLevel:DzBaseLogLevel.verbose];
+            
+          //  NSLog(@"[BetterPlayerPlugin] ✅ Log level set to verbose");
+            
+            // ========== STEP 3: Set Production Flag ==========
+         //   NSLog(@"[BetterPlayerPlugin] Step 3: Setting isProduction");
+            
+            // For production environment, set YES
+            // For testing/development, set NO
+            [configBuilder isProductionIsProduction:YES];
+            
+       //     NSLog(@"[BetterPlayerPlugin] ✅ isProduction set to YES");
+            
+            // ========== OPTIONAL STEP 4: Set Custom API URL (if needed) ==========
+            // NSLog(@"[BetterPlayerPlugin] Step 4: Setting custom API URL");
+            // [configBuilder apiUrlApiUrl:@"https://your-custom-api-url.com"];
+            // NSLog(@"[BetterPlayerPlugin] ✅ Custom API URL set");
+            
+            // ========== STEP 5: Build the Configuration ==========
+          //  NSLog(@"[BetterPlayerPlugin] Step 5: Building configuration");
+            
+            DzBaseConfig *config = [configBuilder build];
+            
+            if (!config) {
+          //      NSLog(@"[BetterPlayerPlugin] ❌ Failed to build configuration");
+          //      NSLog(@"[BetterPlayerPlugin] ❌ Possible reasons:");
+          //      NSLog(@"[BetterPlayerPlugin]    1. Invalid Configuration ID");
+           //     NSLog(@"[BetterPlayerPlugin]    2. Configuration ID not found in Datazoom account");
+           //     NSLog(@"[BetterPlayerPlugin]    3. Account has no active subscription");
+                return;
+            }
+            
+         //   NSLog(@"[BetterPlayerPlugin] ✅ Configuration built successfully: %@", config);
+            
+            // ========== STEP 6: Initialize Datazoom with the Config ==========
+        //    NSLog(@"[BetterPlayerPlugin] Step 6: Initializing DzBaseDatazoom with config");
+            
+            DzBaseDatazoom *datazoom = [DzBaseDatazoom shared];
+            [datazoom doInitConfig:config];
+            
+         //   NSLog(@"[BetterPlayerPlugin] ✅ doInitConfig called");
+            
+            // ========== STEP 7: Verify Initialization ==========
+            // Add slight delay to allow initialization to complete
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), 
+                          dispatch_get_main_queue(), ^{
+                
+                DzBaseDatazoom *verifyDatazoom = [DzBaseDatazoom shared];
+                BOOL isInitialized = [verifyDatazoom isInitialized];
+                NSString *version = [verifyDatazoom version];
+                
+         //       NSLog(@"[BetterPlayerPlugin] ========== INITIALIZATION RESULT ==========");
+        //        NSLog(@"[BetterPlayerPlugin] isInitialized: %@", isInitialized ? @"YES ✅" : @"NO ❌");
+         //       NSLog(@"[BetterPlayerPlugin] Version: %@", version ?: @"<unknown>");
+                
+                if (isInitialized) {
+               //     NSLog(@"[BetterPlayerPlugin] ✅ SUCCESS: Datazoom v%@ initialized successfully!", version);
+               //     NSLog(@"[BetterPlayerPlugin] Ready for use: YES");
+                } else {
+             //       NSLog(@"[BetterPlayerPlugin] ❌ FAILED: isInitialized returned false");
+             //       NSLog(@"[BetterPlayerPlugin] Troubleshooting:");
+             //       NSLog(@"[BetterPlayerPlugin]    1. Check Configuration ID: %@", configurationId);
+             //       NSLog(@"[BetterPlayerPlugin]    2. Verify ID in Datazoom Dashboard");
+            //        NSLog(@"[BetterPlayerPlugin]    3. Ensure iOS configuration (not Android)");
+            //        NSLog(@"[BetterPlayerPlugin]    4. Check if account has active subscription");
+                }
+           //     NSLog(@"[BetterPlayerPlugin] =========================================");
+            });
+            
+        } @catch (NSException *e) {
+        //    NSLog(@"[BetterPlayerPlugin] ❌ EXCEPTION during Datazoom initialization:");
+       //     NSLog(@"[BetterPlayerPlugin]    Name: %@", e.name);
+       //     NSLog(@"[BetterPlayerPlugin]    Reason: %@", e.reason);
+      //      NSLog(@"[BetterPlayerPlugin]    Stack: %@", e.callStackSymbols);
+        }
+    });
+}
+
+// ============================================
+// STEP 2: MediaTailor Initialization (CLASS METHOD)
+// ============================================
++ (void)initializeMediaTailorSDK {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+   //     NSLog(@"[BetterPlayerPlugin] 🚀 Starting MediaTailor SDK initialization");
+        
+        @try {
+
+            MTSDKPalConsentSettingsBuilder *consentBuilder = [[MTSDKPalConsentSettingsBuilder alloc] init];
+                
+            if (!consentBuilder) {
+           //     NSLog(@"[BetterPlayerPlugin] ❌ Failed to create consentBuilder");
+                return;
+            }
+            
+                
+            consentBuilder = [consentBuilder allowStorageValue:YES];
+            consentBuilder =   [consentBuilder directedForChildOrUnknownAgeValue:NO];
+                 MTSDKPalConsentSettings *consent = [consentBuilder build];
+            
+                MTSDKMediaTailor *mediaTailor = [MTSDKMediaTailor mediaTailor];
+                
+                if (!mediaTailor) {
+               //     NSLog(@"[BetterPlayerPlugin] ❌ MediaTailor instance is nil");
+                    return;
+                }
+            
+            //    NSLog(@"[BetterPlayerPlugin] Got MediaTailor instance: %p", mediaTailor);
+                
+          //  NSLog(@"[BetterPlayerPlugin] Initializing PAL consent settings");
+            [mediaTailor doInitPalConsentSettings:consent];
+            
+       //     NSLog(@"[BetterPlayerPlugin] ✅ MediaTailor SDK ready");
+            
+        } @catch (NSException *e) {
+          //  NSLog(@"[BetterPlayerPlugin] ❌ MediaTailor init exception: %@ | %@", 
+           //       e.name, e.reason);
+        }
+    });
+}
 
 #pragma mark - FlutterPlugin protocol
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+    // ========== STEP 1: INITIALIZE DATAZOOM FIRST ==========
+    // Do this FIRST, synchronously, before any other setup
+    [self initializeDatazoomSDK];
+    
+    // ========== STEP 2: INITIALIZE MEDIATAILOR SECOND ==========
+    [self initializeMediaTailorSDK];
+    
+    // ========== STEP 3: Create Plugin ==========
     FlutterMethodChannel* channel =
     [FlutterMethodChannel methodChannelWithName:@"better_player_channel"
                                 binaryMessenger:[registrar messenger]];
@@ -325,6 +488,13 @@ bool _remoteCommandsInitialized = false;
                 }
             }
 
+            // Extract shouldEnableSSAI from dataSource dictionary
+            BOOL shouldEnableSSAI = NO;
+            id ssaiObject = dataSource[@"shouldEnableSSAI"];
+            if (ssaiObject != nil && ssaiObject != [NSNull null]) {
+                shouldEnableSSAI = [ssaiObject boolValue];
+            }
+
             if (headers == [NSNull null] || headers == NULL){
                 headers = @{};
             }
@@ -339,8 +509,22 @@ bool _remoteCommandsInitialized = false;
                 }
                 [player setDataSourceAsset:assetPath withKey:key withCertificateUrl:certificateUrl withLicenseUrl: licenseUrl cacheKey:cacheKey cacheManager:_cacheManager overriddenDuration:overriddenDuration];
             } else if (uriArg) {
-                [player setDataSourceURL:[NSURL URLWithString:uriArg] withKey:key withCertificateUrl:certificateUrl withLicenseUrl: licenseUrl withHeaders:headers withCache: useCache cacheKey:cacheKey cacheManager:_cacheManager overriddenDuration:overriddenDuration videoExtension: videoExtension];
-            } else {
+                    // PRINT THE VALUE HERE
+                  //  NSLog(@"[BetterPlayerPlugin] shouldEnableSSAI value: %@", shouldEnableSSAI ? @"YES" : @"NO");
+                 //   NSLog(@"[BetterPlayerPlugin] Full dataSource: %@", dataSource);
+
+                            [player setDataSourceURL:[NSURL URLWithString:uriArg] 
+                                            withKey:key 
+                                withCertificateUrl:(NSString*)certificateUrl 
+                                    withLicenseUrl:(NSString*)licenseUrl 
+                                        withHeaders:headers 
+                                        withCache:useCache 
+                                        cacheKey:(NSString*)cacheKey 
+                                    cacheManager:_cacheManager 
+                                overriddenDuration:overriddenDuration
+                                    videoExtension:(NSString*)videoExtension 
+                                    shouldEnableSSAI:shouldEnableSSAI];
+                   } else {
                 result(FlutterMethodNotImplemented);
             }
             result(nil);
