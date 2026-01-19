@@ -179,6 +179,38 @@ internal class BetterPlayer(
         }
     }
 
+fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
+    try {
+        val sb = StringBuilder()
+        sb.append("\n=== ${obj.javaClass.simpleName} Details ===\n")
+        
+        var currentClass: Class<*>? = obj.javaClass
+        while (currentClass != null && currentClass != Any::class.java) {
+            sb.append("Class: ${currentClass.name}\n")
+            
+            val fields = currentClass.declaredFields
+            for (field in fields) {
+                // Skip static fields
+                if (Modifier.isStatic(field.modifiers)) continue
+                
+                field.isAccessible = true
+                try {
+                    val value = field.get(obj)
+                    sb.append("  ${field.name}: ${value}\n")
+                } catch (e: Exception) {
+                    sb.append("  ${field.name}: [Error accessing: ${e.message}]\n")
+                }
+            }
+            sb.append("----------------------------\n")
+            currentClass = currentClass.superclass
+        }
+        
+        Log.d(tag, sb.toString())
+    } catch (e: Exception) {
+        Log.e(tag, "Error printing object details: ${e.message}")
+    }
+}
+
     fun setDataSource(
         context: Context,
         key: String?,
