@@ -79,40 +79,47 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         initializeDatazoom(binding.applicationContext)
     }
 
-    private fun initializeDatazoom(context: Context) {
-        if (!isDatazoomInitialized) {
-            try {
-                Log.d(TAG, "Initializing Datazoom...")
+private fun initializeDatazoom(context: Context) {
+    if (!isDatazoomInitialized) {
+        try {
+            Log.d(TAG, "Initializing Datazoom...")
 
-                // Create base context
-                baseContext = BaseContextFactory.create()
+            // Create base context
+            baseContext = BaseContextFactory.create()
 
-                // Initialize Datazoom with config
-                val configId = BuildConfig.DATAZOOM_CONFIG_ID
-                val config = Config.Builder(configId)
-                    .logLevel(DataZoomLogLevel.VERBOSE)
-                    .build()
+            // Initialize Datazoom with config
+            val configId = BuildConfig.DATAZOOM_CONFIG_ID
+            val config = Config.Builder(configId)
+                .logLevel(DataZoomLogLevel.VERBOSE)
+                .build()
 
-                Datazoom.init(config)
+            Datazoom.init(config)
 
-                // Initialize MediaTailor logging
-                MediaTailor.setLogLevel(MediaTailorLogLevel.DEBUG)
+            // Initialize MediaTailor logging
+            MediaTailor.setLogLevel(MediaTailorLogLevel.DEBUG)
 
-                // Initialize PAL (Privacy and Advertising)
-                val palConsentSettings = PalConsentSettings.Builder()
-                    .allowStorage(true) // Note: This must be based on user consents
-                    .directedForChildOrUnknownAge(false)
-                    .build()
+            // Initialize PAL asynchronously to avoid timeout on main thread
+            Thread {
+                try {
+                    val palConsentSettings = PalConsentSettings.Builder()
+                        .allowStorage(true)
+                        .directedForChildOrUnknownAge(false)
+                        .build()
 
-                MediaTailor.initPal(context.applicationContext, palConsentSettings)
+                    MediaTailor.initPal(context.applicationContext, palConsentSettings)
+                    Log.d(TAG, "PAL initialized successfully")
+                } catch (e: Exception) {
+                    Log.w(TAG, "PAL initialization warning (non-critical): ${e.message}")
+                }
+            }.start()
 
-                isDatazoomInitialized = true
-                Log.d(TAG, "Datazoom and MediaTailor initialized successfully")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize Datazoom: ${e.message}", e)
-            }
+            isDatazoomInitialized = true
+            Log.d(TAG, "Datazoom and MediaTailor initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize Datazoom: ${e.message}", e)
         }
     }
+}
 
     override fun onDetachedFromEngine(binding: FlutterPluginBinding) {
         if (flutterState == null) {

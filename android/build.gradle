@@ -74,7 +74,7 @@ dependencies {
 
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
-
+implementation 'com.google.android.gms:play-services-ads-identifier:18.0.0'
     // Datazoom
     implementation "io.datazoom.sdk:base-android:4.1.18"
     implementation "io.datazoom.sdk:mediatailor:0.0.19"

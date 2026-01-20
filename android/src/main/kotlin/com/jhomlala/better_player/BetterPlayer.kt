@@ -1,5 +1,6 @@
 package com.jhomlala.better_player
-
+import java.util.UUID
+import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -239,7 +240,7 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
             Log.d(TAG, "Debug: SSAI enabled, attempting to use MediaTailor")
 
             // Transform URL if needed (v1/master/* to v1/session/*)
-            val transformedUrl = transformUrlForSSAI(dataSource)
+            val transformedUrl = transformUrlForSSAI(dataSource,context)
             Log.d(TAG, "Debug: Transformed URL: $transformedUrl")
 
             // Create MediaTailor session
@@ -254,23 +255,66 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
                 licenseUrl, drmHeaders, cacheKey, clearKey, formatHint)
         }
     }
-
-    private fun transformUrlForSSAI(originalUrl: String): String {
-        return try {
-            // Replace v1/master/ with v1/session/
-            val transformed = originalUrl.replace(
-                Regex("""/v1/master/"""),
-                "/v1/session/"
-            )
-            Log.d(TAG, "Debug: URL transformed from: $originalUrl")
-            Log.d(TAG, "Debug: URL transformed to: $transformed")
-            transformed
-        } catch (e: Exception) {
-            Log.e(TAG, "Debug: Failed to transform URL: ${e.message}")
-            originalUrl // Return original if transformation fails
-        }
+private fun transformUrlForSSAI(originalUrl: String, context: Context): String {
+    return try {
+        // Replace v1/master/ with v1/session/
+        val transformed = originalUrl.replace(
+            Regex("""/v1/master/"""),
+            "/v1/session/"
+        ) 
+        transformed
+    } catch (e: Exception) {
+        Log.e(TAG, "Debug: Failed to transform URL: ${e.message}")
+        originalUrl // Return original if transformation fails
     }
+}
 
+private fun extractUrlParameters( context: Context): Map<String, String> {
+    val params = mutableMapOf<String, String>()
+    
+    return try {
+        // Get the current app bundle ID
+        val bundleId = context.packageName
+        params["idtype"] = "aaid";
+        params["an"] = "Swift%20TV%20-%20Live%20TV%20Streaming";
+        params["msid"] = bundleId;
+        // Get and add the Google Advertising ID (GAID)
+        getGoogleAdvertisingId(context) { gaid ->
+                params["rdid"] = gaid; 
+        }
+        Log.d(TAG, "Debug: Successfully extracted ${params.size} parameters from URL")
+        params
+    } catch (e: Exception) {
+        Log.e(TAG, "Error extracting URL parameters: ${e.message}")
+        emptyMap()
+    }
+}
+ 
+
+private fun getGoogleAdvertisingId(context: Context, callback: (String) -> Unit) {
+    try {
+        val advertisingIdClient = AdvertisingIdClient.getAdvertisingIdInfo(context)
+        val gaid = advertisingIdClient.id
+        
+        // If GAID is empty or null, generate a random UUID as fallback
+        val finalId = if (gaid.isNullOrEmpty()) {
+            Log.w(TAG, "GAID is empty, generating random UUID")
+            generateRandomUUID()
+        } else {
+            gaid
+        }
+        
+        callback(finalId)
+    } catch (e: Exception) {
+        Log.e(TAG, "Error getting Google Advertising ID: ${e.message}")
+        // Generate a random UUID as fallback when error occurs
+        callback(generateRandomUUID())
+    }
+}
+
+private fun generateRandomUUID(): String {
+    return java.util.UUID.randomUUID().toString()
+}
     private fun createMediaTailorSession(
         context: Context,
         sessionUrl: String,
@@ -287,6 +331,12 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
         formatHint: String?
     ) {
         Log.d(TAG, "Debug: Creating MediaTailor session for URL: $sessionUrl")
+
+
+        // Extract URL parameters from sessionUrl
+        val urlParams = extractUrlParameters(context)
+        Log.d(TAG, "Debug: Extracted URL parameters: $urlParams")
+
 
         // Create PAL nonce request parameters
         val palNonceRequestParams = PalNonceRequestParams.Builder()
@@ -307,6 +357,7 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
         val configBuilder = SessionConfiguration.Builder()
             .sessionInitUrl(sessionUrl)
             .palNonceRequestParams(palNonceRequestParams)
+             .playerParams(urlParams) // Add extracted URL parameters
 
         Log.d(TAG, "Debug: MediaTailor session configuration built")
 
@@ -454,37 +505,6 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
         }
     }
 
-    fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
-        try {
-            val sb = StringBuilder()
-            sb.append("\n=== ${obj.javaClass.simpleName} Details ===\n")
-
-            var currentClass: Class<*>? = obj.javaClass
-            while (currentClass != null && currentClass != Any::class.java) {
-                sb.append("Class: ${currentClass.name}\n")
-
-                val fields = currentClass.declaredFields
-                for (field in fields) {
-                    // Skip static fields
-                    if (Modifier.isStatic(field.modifiers)) continue
-
-                    field.isAccessible = true
-                    try {
-                        val value = field.get(obj)
-                        sb.append("  ${field.name}: ${value}\n")
-                    } catch (e: Exception) {
-                        sb.append("  ${field.name}: [Error accessing: ${e.message}]\n")
-                    }
-                }
-                sb.append("----------------------------\n")
-                currentClass = currentClass.superclass
-            }
-
-            Log.d(tag, sb.toString())
-        } catch (e: Exception) {
-            Log.e(tag, "Error printing object details: ${e.message}")
-        }
-    }
     fun setupPlayerNotification(
         context: Context, title: String, author: String?,
         imageUrl: String?, notificationChannelName: String?,
