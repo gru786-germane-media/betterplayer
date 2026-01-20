@@ -6,6 +6,7 @@
 #import <better_player/better_player-Swift.h>
 #import <DzBase/DzBase.h>  // Add Datazoom import
 #import <Foundation/Foundation.h>
+#import <MediaTailorSDK/MediaTailorSDK.h>
 
 #if !__has_feature(objc_arc)
 #error Code Requires ARC.
@@ -131,46 +132,28 @@ bool _remoteCommandsInitialized = false;
         }
     });
 }
-
 // ============================================
 // STEP 2: MediaTailor Initialization (CLASS METHOD)
 // ============================================
 + (void)initializeMediaTailorSDK {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-   //     NSLog(@"[BetterPlayerPlugin] 🚀 Starting MediaTailor SDK initialization");
-        
+        NSLog(@"[BetterPlayerPlugin] 🚀 initializeMediaTailorSDK 1");
         @try {
-
-            MTSDKPalConsentSettingsBuilder *consentBuilder = [[MTSDKPalConsentSettingsBuilder alloc] init];
-                
-            if (!consentBuilder) {
-           //     NSLog(@"[BetterPlayerPlugin] ❌ Failed to create consentBuilder");
-                return;
+            // Initialize DatazoomWrapper
+            NSLog(@"[BetterPlayerPlugin] 🚀 initializeMediaTailorSDK 2");
+            static DatazoomWrapper *datazoomWrapper = nil;
+            if (!datazoomWrapper) {
+                datazoomWrapper = [[DatazoomWrapper alloc] init];
             }
             
-                
-            consentBuilder = [consentBuilder allowStorageValue:YES];
-            consentBuilder =   [consentBuilder directedForChildOrUnknownAgeValue:NO];
-                 MTSDKPalConsentSettings *consent = [consentBuilder build];
+            NSLog(@"[BetterPlayerPlugin] 🚀 initializeMediaTailorSDK 3");
+            NSLog(@"[BetterPlayerPlugin] 🚀 initializeMediaTailorSDK 4");
+            [datazoomWrapper initializeMediaTailor];  
             
-                MTSDKMediaTailor *mediaTailor = [MTSDKMediaTailor mediaTailor];
-                
-                if (!mediaTailor) {
-               //     NSLog(@"[BetterPlayerPlugin] ❌ MediaTailor instance is nil");
-                    return;
-                }
-            
-            //    NSLog(@"[BetterPlayerPlugin] Got MediaTailor instance: %p", mediaTailor);
-                
-          //  NSLog(@"[BetterPlayerPlugin] Initializing PAL consent settings");
-            [mediaTailor doInitPalConsentSettings:consent];
-            
-       //     NSLog(@"[BetterPlayerPlugin] ✅ MediaTailor SDK ready");
-            
+            NSLog(@"[BetterPlayerPlugin] 🚀 initializeMediaTailorSDK 5");
         } @catch (NSException *e) {
-          //  NSLog(@"[BetterPlayerPlugin] ❌ MediaTailor init exception: %@ | %@", 
-           //       e.name, e.reason);
+            NSLog(@"[BetterPlayer] ❌ EXCEPTION in SSAI setup: %@", e.reason);
         }
     });
 }

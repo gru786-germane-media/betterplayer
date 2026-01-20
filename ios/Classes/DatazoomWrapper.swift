@@ -23,6 +23,16 @@ import MediaTailorSDK
     let configBuilder = Config.Builder(configurationId: configId)
     Datazoom.shared.doInit(config: configBuilder.build())
   }
+  @objc
+  public func initializeMediaTailor() {
+      let palConsentSettings = PalConsentSettings.Builder()
+          .allowStorage(value: true) // Note that this value must be based on user consents
+          .directedForChildOrUnknownAge(value: false)
+          .build()
+     MediaTailor.shared.setLogLevel(logLevel: LogLevel.verbose)
+     MediaTailor.shared.doInitPal(consentSettings: palConsentSettings)
+    
+  }
   
     @objc(createMediaTailorSessionWithUrl:onSuccess:onError:)
   public func createMediaTailorSession(

@@ -11,10 +11,18 @@
 #import "BetterPlayer.h"
 #import <MediaPlayer/MediaPlayer.h>
 
+// Add Datazoom imports
+#import <DzBase/DzBase.h>
+#import <DzMediaTailorAdapter/DzMediaTailorAdapter.h>
+#import <MediaTailorSDK/MediaTailorSDK.h>
+
+@class DatazoomWrapper;
+
 @interface BetterPlayerPlugin : NSObject <FlutterPlugin, FlutterPlatformViewFactory>
 
 @property(readonly, weak, nonatomic) NSObject<FlutterBinaryMessenger>* messenger;
 @property(readonly, strong, nonatomic) NSMutableDictionary* players;
 @property(readonly, strong, nonatomic) NSObject<FlutterPluginRegistrar>* registrar;
+@property(nonatomic, strong)  DatazoomWrapper *datazoomWrapper;
 
 @end
