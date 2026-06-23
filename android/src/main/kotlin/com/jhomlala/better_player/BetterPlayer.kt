@@ -271,24 +271,118 @@ private fun transformUrlForSSAI(originalUrl: String, context: Context): String {
     }
 }
 
-private fun extractUrlParameters( context: Context): Map<String, String> {
+// MediaTailor ad-param macros the Dart side may send via the data source `headers`
+// map. These are overlaid onto the base params so the SSAI ad server receives the
+// app's targeting signals. Add new macro keys here when introduced on the Dart side.
+private val AD_PARAM_HEADER_KEYS = arrayOf(
+    "msid",
+    "idtype",
+    "AV_PUBLISHERID",
+    "AV_CHANNELID",
+    "AV_APPSTOREURL",
+    "AV_RTB_DEVICE_TYPE",
+    "AV_WIDTH",
+    "AV_HEIGHT",
+    "AV_LATITUDE",
+    "AV_LONGITUDE",
+    "AV_APP_DOMAIN",
+    "AV_SCHAIN",
+    "AV_CONTENT_CONTEXT",
+    "AV_CONTENT_KEYWORDS",
+    "AV_CONTENT_LANGUAGE",
+    "AV_CONTENT_TITLE",
+    "AV_CONTENT_SERIES",
+    "AV_CONTENT_NETWORK_NAME",
+    "AV_CONTENT_DIST_NAME",
+    "AV_CONTENT_CAT",
+    "AV_CONTENT_ID",
+    "AV_CONTENT_URL",
+    "AV_CONTENT_CHANNEL",
+    "AV_CONTENT_GENRE",
+    "AV_CONTENT_RATING",
+    "AV_CONTENT_PRODQ",
+    "ssai_e",
+    "ssai_p",
+    "livestream",
+    "coppa"
+)
+
+/** True on Amazon Fire OS devices (Fire TV / tablets), which lack Google Play Services. */
+private fun isAmazonDevice(): Boolean =
+    "Amazon".equals(Build.MANUFACTURER, ignoreCase = true)
+
+/**
+ * Reads the Amazon Advertising ID exposed via Settings.Secure ("advertising_id").
+ * Returns null when unavailable or when the user enabled "limit ad tracking" so the
+ * caller falls back to a random UUID. No IPC — safe on any thread.
+ */
+private fun readAmazonAdvertisingId(context: Context): String? {
+    return try {
+        val cr = context.contentResolver
+        if (android.provider.Settings.Secure.getInt(cr, "limit_ad_tracking", 0) != 0) {
+            null
+        } else {
+            android.provider.Settings.Secure.getString(cr, "advertising_id")
+        }
+    } catch (t: Throwable) {
+        null
+    }
+}
+
+private fun extractUrlParameters(context: Context, headers: Map<String, String>?): Map<String, String> {
     val params = mutableMapOf<String, String>()
-    
+
     return try {
         // Get the current app bundle ID
         val bundleId = context.packageName
-        params["idtype"] = "aaid";
-        params["an"] = "Swift%20TV%20-%20Live%20TV%20Streaming";
-        params["msid"] = bundleId;
-        // Get and add the Google Advertising ID (GAID)
-        getGoogleAdvertisingId(context) { gaid ->
-                params["rdid"] = gaid; 
+        params["an"] = "Swift%20TV%20-%20Live%20TV%20Streaming"
+        params["msid"] = bundleId
+
+        // Device-aware advertising id + its type. Fire OS (Amazon) has no Google Play
+        // Services: the id is the Amazon Advertising ID (type "afai"). Everywhere else
+        // it is the Google Advertising ID / GAID (type "aaid"). Both fall back to a
+        // random UUID so MediaTailor always receives an rdid.
+        if (isAmazonDevice()) {
+            params["idtype"] = "afai"
+            val amazonAdId = readAmazonAdvertisingId(context)
+            params["rdid"] = if (amazonAdId.isNullOrEmpty()) generateRandomUUID() else amazonAdId
+        } else {
+            params["idtype"] = "aaid"
+            // getAdvertisingIdInfo() is a blocking call; the callback fires synchronously
+            // so rdid is populated before this method returns.
+            getGoogleAdvertisingId(context) { gaid ->
+                params["rdid"] = gaid
+            }
         }
-        Log.d(TAG, "Debug: Successfully extracted ${params.size} parameters from URL")
+
+        // user_agent: prefer the WebView/browser UA (what ad servers expect for UA-based
+        // targeting); fall back to the lightweight http.agent if WebView is unavailable.
+        val userAgent: String? = try {
+            android.webkit.WebSettings.getDefaultUserAgent(context)
+        } catch (t: Throwable) {
+            System.getProperty("http.agent")
+        }
+        if (!userAgent.isNullOrEmpty()) {
+            params["user_agent"] = userAgent
+        }
+
+        // Overlay every MediaTailor ad-param macro the Dart side sent via headers.
+        // Headers take precedence so per-stream targeting (msid override, player size,
+        // IP geo, content context, schain, etc.) reaches the SSAI ad server.
+        if (headers != null) {
+            for (paramKey in AD_PARAM_HEADER_KEYS) {
+                val value = headers[paramKey]
+                if (!value.isNullOrEmpty()) {
+                    params[paramKey] = value
+                }
+            }
+        }
+
+        Log.d(TAG, "Debug: Successfully extracted ${params.size} ad parameters")
         params
     } catch (e: Exception) {
         Log.e(TAG, "Error extracting URL parameters: ${e.message}")
-        emptyMap()
+        params
     }
 }
  
@@ -317,6 +411,43 @@ private fun getGoogleAdvertisingId(context: Context, callback: (String) -> Unit)
 private fun generateRandomUUID(): String {
     return java.util.UUID.randomUUID().toString()
 }
+    /**
+     * Builds a Google PAL nonce request, or null when a nonce must NOT be requested.
+     * Returns null on Amazon / Fire OS (no Play Services) so those create sessions
+     * nonce-free with no ad-delivery regression. Width/height/descriptionUrl are
+     * derived from the ad params (AV_WIDTH / AV_HEIGHT / AV_APP_DOMAIN) when present.
+     */
+    private fun buildPalNonceParams(adParams: Map<String, String>): PalNonceRequestParams? {
+        if (isAmazonDevice()) {
+            return null
+        }
+        return try {
+            val width = adParams["AV_WIDTH"]?.trim()?.toIntOrNull()?.takeIf { it > 0 } ?: 1920
+            val height = adParams["AV_HEIGHT"]?.trim()?.toIntOrNull()?.takeIf { it > 0 } ?: 1080
+            val domain = adParams["AV_APP_DOMAIN"]
+            val descriptionUrl = if (!domain.isNullOrEmpty()) {
+                if (domain.startsWith("http")) domain else "https://$domain"
+            } else {
+                "https://playswift.tv"
+            }
+            PalNonceRequestParams.Builder()
+                .adWillAutoPlay(true)
+                .adWillPlayMuted(false)
+                .descriptionUrl(descriptionUrl)
+                .iconsSupported(true)
+                .playerType("ExoPlayer")
+                .playerVersion("0.0.12")
+                .videoHeight(height)
+                .videoWidth(width)
+                .omidPartnerName("amazon2")
+                .omidPartnerVersion("1.0.0")
+                .build()
+        } catch (t: Throwable) {
+            // PAL classes/methods unavailable in this vendor's SDK build → proceed nonce-free.
+            null
+        }
+    }
+
     private fun createMediaTailorSession(
         context: Context,
         sessionUrl: String,
@@ -335,31 +466,21 @@ private fun generateRandomUUID(): String {
         Log.d(TAG, "Debug: Creating MediaTailor session for URL: $sessionUrl")
 
 
-        // Extract URL parameters from sessionUrl
-        val urlParams = extractUrlParameters(context)
+        // Extract URL parameters (base params + ad-param macros from the data source headers)
+        val urlParams = extractUrlParameters(context, headers)
         Log.d(TAG, "Debug: Extracted URL parameters: $urlParams")
-
-
-        // Create PAL nonce request parameters
-        val palNonceRequestParams = PalNonceRequestParams.Builder()
-            .adWillAutoPlay(true)
-            .adWillPlayMuted(false)
-            .descriptionUrl("https://playswift.tv")
-            .iconsSupported(true)
-            .playerType("ExoPlayer")
-            .playerVersion("0.0.12")
-            .ppid("12345")
-            .videoHeight(1080)
-            .videoWidth(1920)
-            .omidPartnerName("amazon2")
-            .omidPartnerVersion("1.0.0")
-            .build()
 
         // Build session configuration
         val configBuilder = SessionConfiguration.Builder()
             .sessionInitUrl(sessionUrl)
-            .palNonceRequestParams(palNonceRequestParams)
-             .playerParams(urlParams) // Add extracted URL parameters
+            .playerParams(urlParams) // Add extracted URL parameters + header macros
+
+        // PAL nonce — Android TV w/ Play Services only; skipped on Amazon/Fire OS.
+        // Width/height/descriptionUrl are derived from the incoming ad params.
+        val palNonceRequestParams = buildPalNonceParams(urlParams)
+        if (palNonceRequestParams != null) {
+            configBuilder.palNonceRequestParams(palNonceRequestParams)
+        }
 
         Log.d(TAG, "Debug: MediaTailor session configuration built")
 

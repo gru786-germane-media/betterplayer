@@ -221,8 +221,13 @@ class _BetterPlayerState extends State<BetterPlayer>
 
     if (_betterPlayerConfiguration.autoDetectFullscreenDeviceOrientation ==
         true) {
-      final aspectRatio =
-          widget.controller.videoPlayerController?.value.aspectRatio ?? 1.0;
+      var aspectRatio = 1.0;
+      try {
+        aspectRatio =
+            widget.controller.videoPlayerController?.value.aspectRatio ?? 1.0;
+      } catch (e) {
+        debugPrint("Exception in betterplayer package. $e");
+      }
       List<DeviceOrientation> deviceOrientations;
       if (aspectRatio < 1.0) {
         deviceOrientations = [
@@ -246,8 +251,9 @@ class _BetterPlayerState extends State<BetterPlayer>
     if (!_betterPlayerConfiguration.allowedScreenSleep) {
       WakelockPlus.enable();
     }
-
-    await Navigator.of(context, rootNavigator: true).push(route);
+    if (mounted) {
+      await Navigator.of(context, rootNavigator: true).push(route);
+    }
     _isFullScreen = false;
     widget.controller.exitFullScreen();
 

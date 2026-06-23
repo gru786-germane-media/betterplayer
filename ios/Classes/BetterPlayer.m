@@ -481,21 +481,40 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     // FUNCTION 3: Create MediaTailor Session Configuration
     // ============================================
     - (MTSDKSessionConfiguration *)createMediaTailorSessionConfigWithContentURL:(NSString *)contentURL
-    palNonceParams:(MTSDKPalNonceRequestParams *)palNonceParams {
-        
+    palNonceParams:(MTSDKPalNonceRequestParams *)palNonceParams
+    headers:(NSDictionary *)headers {
+
      //   NSLog(@"[BetterPlayer] Creating MediaTailor session config");
-        
+
         MTSDKSessionConfigurationBuilder *configBuilder = [[MTSDKSessionConfigurationBuilder alloc] init];
-        
+
         // 1. Set the PAL nonce request params (required)
         [configBuilder palNonceRequestParamsValue:palNonceParams];
-        
-        // 2. Set basic player parameters (as dictionary)
-        NSDictionary *playerParams = @{
+
+        // 2. Set basic player parameters (as dictionary), overlaying every MediaTailor
+        //    ad-param macro the Dart side sent via headers so SSAI targeting reaches the
+        //    ad server. Keep this key list in sync with MediaTailorHelper.adParamHeaderKeys.
+        NSMutableDictionary *playerParams = [@{
             @"playerType": @"BetterPlayer",
             @"playerVersion": @"1.0"
-            // Note: No external headers copied here
-        };
+        } mutableCopy];
+        NSArray<NSString *> *adParamHeaderKeys = @[
+            @"msid", @"idtype", @"AV_PUBLISHERID", @"AV_CHANNELID", @"AV_APPSTOREURL",
+            @"AV_RTB_DEVICE_TYPE", @"AV_WIDTH", @"AV_HEIGHT", @"AV_LATITUDE", @"AV_LONGITUDE",
+            @"AV_APP_DOMAIN", @"AV_SCHAIN", @"AV_CONTENT_CONTEXT", @"AV_CONTENT_KEYWORDS",
+            @"AV_CONTENT_LANGUAGE", @"AV_CONTENT_TITLE", @"AV_CONTENT_SERIES",
+            @"AV_CONTENT_NETWORK_NAME", @"AV_CONTENT_DIST_NAME", @"AV_CONTENT_CAT",
+            @"AV_CONTENT_ID", @"AV_CONTENT_URL", @"AV_CONTENT_CHANNEL", @"AV_CONTENT_GENRE",
+            @"AV_CONTENT_RATING", @"AV_CONTENT_PRODQ", @"ssai_e", @"ssai_p", @"livestream", @"coppa"
+        ];
+        if ([headers isKindOfClass:[NSDictionary class]]) {
+            for (NSString *key in adParamHeaderKeys) {
+                id value = headers[key];
+                if ([value isKindOfClass:[NSString class]] && [(NSString *)value length] > 0) {
+                    playerParams[key] = value;
+                }
+            }
+        }
         [configBuilder playerParamsValue:playerParams];
         
         // 3. adding the sessionInitUrl
@@ -851,6 +870,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             
             [self.datazoomWrapper
              createMediaTailorSessionWithUrl: url.absoluteString
+             headers: (headers ?: @{})
              onSuccess:^(NSString *mtSessionUrl, MTSDKSession* session) {
                  
                  __strong typeof(self) strongSelf = weakSelf;

@@ -34,13 +34,14 @@ import MediaTailorSDK
     
   }
   
-    @objc(createMediaTailorSessionWithUrl:onSuccess:onError:)
+    @objc(createMediaTailorSessionWithUrl:headers:onSuccess:onError:)
   public func createMediaTailorSession(
     url: String,
+    headers: [String: String]?,
     onSuccess: @escaping(String, Session) -> Void,
     onError: @escaping(String) -> Void
   ) {
-    mediaTailorAdapter.createMediaTailor(url: url) { [weak self] session, error in
+    mediaTailorAdapter.createMediaTailor(url: url, headers: headers) { [weak self] session, error in
       guard let self = self else { return }
       
       Task {

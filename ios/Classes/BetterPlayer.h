@@ -124,8 +124,9 @@ NS_ASSUME_NONNULL_BEGIN
 // ============================================
 - (void)initializeMediaTailorSDK;
 - (MTSDKPalNonceRequestParams *)createPalNonceRequestParamsWithContentURL:(NSString *)contentURL;
-- (MTSDKSessionConfiguration *)createMediaTailorSessionConfigWithContentURL:(NSString *)contentURL 
-                                                          palNonceParams:(MTSDKPalNonceRequestParams *)palNonceParams;
+- (MTSDKSessionConfiguration *)createMediaTailorSessionConfigWithContentURL:(NSString *)contentURL
+                                                          palNonceParams:(MTSDKPalNonceRequestParams *)palNonceParams
+                                                                 headers:(NSDictionary *)headers;
 - (void)attemptSSAISetupWithURL:(NSURL *)url 
                          withKey:(NSString*)key
                           headers:(NSDictionary*)headers 

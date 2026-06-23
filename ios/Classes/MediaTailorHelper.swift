@@ -13,10 +13,46 @@ import Foundation
 
   
 class MediaTailorHelper {
-  
+
   private var session: Session? = nil
-  
-  public func createMediaTailor(url: String, onSession: @escaping(Session?, SessionError?) -> Void) {
+
+  // MediaTailor ad-param macros the Dart side may send via the data source `headers`
+  // map. These are overlaid onto the base playerParams so the SSAI ad server receives
+  // the app's targeting signals. Add new macro keys here when introduced on the Dart side.
+  static let adParamHeaderKeys: [String] = [
+    "msid",
+    "idtype",
+    "AV_PUBLISHERID",
+    "AV_CHANNELID",
+    "AV_APPSTOREURL",
+    "AV_RTB_DEVICE_TYPE",
+    "AV_WIDTH",
+    "AV_HEIGHT",
+    "AV_LATITUDE",
+    "AV_LONGITUDE",
+    "AV_APP_DOMAIN",
+    "AV_SCHAIN",
+    "AV_CONTENT_CONTEXT",
+    "AV_CONTENT_KEYWORDS",
+    "AV_CONTENT_LANGUAGE",
+    "AV_CONTENT_TITLE",
+    "AV_CONTENT_SERIES",
+    "AV_CONTENT_NETWORK_NAME",
+    "AV_CONTENT_DIST_NAME",
+    "AV_CONTENT_CAT",
+    "AV_CONTENT_ID",
+    "AV_CONTENT_URL",
+    "AV_CONTENT_CHANNEL",
+    "AV_CONTENT_GENRE",
+    "AV_CONTENT_RATING",
+    "AV_CONTENT_PRODQ",
+    "ssai_e",
+    "ssai_p",
+    "livestream",
+    "coppa"
+  ]
+
+  public func createMediaTailor(url: String, headers: [String: String]?, onSession: @escaping(Session?, SessionError?) -> Void) {
       NSLog("[BetterPlayer] START: createMediaTailor 1...")
 
       let palNonce = PalNonceRequestParams.Builder()
@@ -49,7 +85,7 @@ class MediaTailorHelper {
          NSLog("[BetterPlayer] START: createMediaTailor 5...")
  
       // Create player parameters dictionary (not a closure!)
-      let playerParams: [String: String] = [
+      var playerParams: [String: String] = [
         "playerType": "BetterPlayer",
           "playerVersion": "1.0",
           "idtype": "idfa",
@@ -57,6 +93,17 @@ class MediaTailorHelper {
           "msid": bundleId,
           "rdid": rdid
       ]
+
+      // Overlay every MediaTailor ad-param macro the Dart side sent via headers.
+      // Headers take precedence so per-stream targeting (msid override, player size,
+      // IP geo, content context, schain, etc.) reaches the SSAI ad server.
+      if let headers = headers {
+        for key in MediaTailorHelper.adParamHeaderKeys {
+          if let value = headers[key], !value.isEmpty {
+            playerParams[key] = value
+          }
+        }
+      }
        NSLog("[BetterPlayer] START: createMediaTailor 6...")
   let config = SessionConfiguration.Builder()
        .sessionInitUrl(value: url)
