@@ -238,8 +238,7 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
         Log.d(TAG, "Debug: Original dataSource: $dataSource")
 
         // Check if we should use MediaTailor SSAI
-        //&& !dataSource.isNullOrEmpty()
-        if (true ) {
+        if (shouldEnableSSAI && !dataSource.isNullOrEmpty()) {
             Log.d(TAG, "Debug: SSAI enabled, attempting to use MediaTailor")
 
             // Transform URL if needed (v1/master/* to v1/session/*)
