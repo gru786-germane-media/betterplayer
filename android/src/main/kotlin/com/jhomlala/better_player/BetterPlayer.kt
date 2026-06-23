@@ -238,7 +238,7 @@ fun printObjectDetails(obj: Any, tag: String = "ObjectDetails") {
         Log.d(TAG, "Debug: Original dataSource: $dataSource")
 
         // Check if we should use MediaTailor SSAI
-        if (shouldEnableSSAI && !dataSource.isNullOrEmpty()) {
+        if (true && !dataSource.isNullOrEmpty()) {
             Log.d(TAG, "Debug: SSAI enabled, attempting to use MediaTailor")
 
             // Transform URL if needed (v1/master/* to v1/session/*)
@@ -312,6 +312,25 @@ private fun isAmazonDevice(): Boolean =
     "Amazon".equals(Build.MANUFACTURER, ignoreCase = true)
 
 /**
+ * OpenRTB device type for AV_RTB_DEVICE_TYPE: 3 = Connected TV, 5 = Tablet, 4 = Phone.
+ * Connected TV is detected via UiModeManager (covers Android TV and Fire TV).
+ */
+private fun detectRtbDeviceType(context: Context): String {
+    return try {
+        val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as? android.app.UiModeManager
+        if (uiModeManager?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) {
+            "3" // Connected TV
+        } else if (context.resources.configuration.smallestScreenWidthDp >= 600) {
+            "5" // Tablet
+        } else {
+            "4" // Phone
+        }
+    } catch (t: Throwable) {
+        "3"
+    }
+}
+
+/**
  * Reads the Amazon Advertising ID exposed via Settings.Secure ("advertising_id").
  * Returns null when unavailable or when the user enabled "limit ad tracking" so the
  * caller falls back to a random UUID. No IPC — safe on any thread.
@@ -365,6 +384,17 @@ private fun extractUrlParameters(context: Context, headers: Map<String, String>?
         if (!userAgent.isNullOrEmpty()) {
             params["user_agent"] = userAgent
         }
+
+        // Player/device-derived defaults. These are set BEFORE the header overlay so the
+        // app can still override them per-stream (e.g. exact player-view size) via headers.
+        try {
+            val metrics = context.resources.displayMetrics
+            if (metrics.widthPixels > 0) params["AV_WIDTH"] = metrics.widthPixels.toString()
+            if (metrics.heightPixels > 0) params["AV_HEIGHT"] = metrics.heightPixels.toString()
+        } catch (t: Throwable) {
+            // Display metrics unavailable — leave width/height to header overlay / template default.
+        }
+        params["AV_RTB_DEVICE_TYPE"] = detectRtbDeviceType(context)
 
         // Overlay every MediaTailor ad-param macro the Dart side sent via headers.
         // Headers take precedence so per-stream targeting (msid override, player size,
