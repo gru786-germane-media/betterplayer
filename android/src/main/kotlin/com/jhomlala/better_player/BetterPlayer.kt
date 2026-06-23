@@ -417,6 +417,22 @@ private fun generateRandomUUID(): String {
      * nonce-free with no ad-delivery regression. Width/height/descriptionUrl are
      * derived from the ad params (AV_WIDTH / AV_HEIGHT / AV_APP_DOMAIN) when present.
      */
+    /**
+     * Best-effort extraction of the MediaTailor session id from a session playback /
+     * tracking URL. The SDK embeds the id either as the `aws.sessionId` query param or
+     * as the trailing path segment. Returns "n/a" / the raw URL if it cannot be parsed.
+     */
+    private fun extractSessionId(url: String?): String {
+        if (url.isNullOrEmpty()) return "n/a"
+        return try {
+            val uri = Uri.parse(url)
+            val q = uri.getQueryParameter("aws.sessionId")
+            if (!q.isNullOrEmpty()) q else (uri.lastPathSegment ?: url)
+        } catch (e: Exception) {
+            url
+        }
+    }
+
     private fun buildPalNonceParams(adParams: Map<String, String>): PalNonceRequestParams? {
         if (isAmazonDevice()) {
             return null
@@ -495,6 +511,10 @@ private fun generateRandomUUID(): String {
                 // Use session playback URL if available, otherwise use original
                 val playbackUrl = session.playbackUrl ?: sessionUrl
                 Log.d(TAG, "Debug: Using playback URL: $playbackUrl")
+
+                // Greppable SSAI session id log (filter:  adb logcat -s SSAI-SESSION:*)
+                val ssaiSessionId = extractSessionId(playbackUrl)
+                Log.i("SSAI-SESSION", "SSAI session created → sessionId=$ssaiSessionId | playerParams=$urlParams")
 
                 // Setup Datazoom ad session if adapter is available
                 if (dataZoomDzAdapter != null && playerView != null) {

@@ -884,6 +884,17 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                  NSLog(@"[BetterPlayer] ========================================");
                  NSLog(@"[BetterPlayer]   - Playback URL: %@", mtSessionUrl);
              //    NSLog(@"[BetterPlayer]   - Session: %@", session);
+
+                 // Greppable SSAI session id log (Console filter:  SSAI-SESSION)
+                 NSString *ssaiSessionId = mtSessionUrl;
+                 NSURLComponents *ssaiComps = [NSURLComponents componentsWithString:mtSessionUrl];
+                 for (NSURLQueryItem *item in ssaiComps.queryItems) {
+                     if ([item.name isEqualToString:@"aws.sessionId"]) {
+                         ssaiSessionId = item.value;
+                         break;
+                     }
+                 }
+                 NSLog(@"[BetterPlayer] SSAI-SESSION session created → sessionId=%@", ssaiSessionId);
                  
                  // Handle successful session creation
                  [strongSelf handleMediaTailorSessionSuccessWithOriginalURL:url

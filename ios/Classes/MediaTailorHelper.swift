@@ -105,6 +105,7 @@ class MediaTailorHelper {
         }
       }
        NSLog("[BetterPlayer] START: createMediaTailor 6...")
+      NSLog("[BetterPlayer] SSAI-SESSION playerParams → %@", playerParams)
   let config = SessionConfiguration.Builder()
        .sessionInitUrl(value: url)
        .sessionFeatures(value: features)
