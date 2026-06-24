@@ -10,6 +10,7 @@ import AppTrackingTransparency
 import Foundation
 import MediaTailorSDK
 import Foundation
+import UIKit
 
   
 class MediaTailorHelper {
@@ -93,6 +94,40 @@ class MediaTailorHelper {
           "msid": bundleId,
           "rdid": rdid
       ]
+
+      // Player/device-derived defaults. Set BEFORE the header overlay so the app can
+      // still override them per-stream (e.g. exact player-view size) via headers.
+      switch UIDevice.current.userInterfaceIdiom {
+      case .tv:    playerParams["AV_RTB_DEVICE_TYPE"] = "3" // Connected TV
+      case .pad:   playerParams["AV_RTB_DEVICE_TYPE"] = "5" // Tablet
+      default:     playerParams["AV_RTB_DEVICE_TYPE"] = "4" // Phone
+      }
+      let nativeBounds = UIScreen.main.nativeBounds
+      if nativeBounds.width > 0 {
+        playerParams["AV_WIDTH"] = String(Int(nativeBounds.width))
+      }
+      if nativeBounds.height > 0 {
+        playerParams["AV_HEIGHT"] = String(Int(nativeBounds.height))
+      }
+
+      // App-domain + SSAI/stream-flag defaults (constants for this live-TV SSAI player).
+      // Set BEFORE the header overlay so the app can override any of them per-stream.
+      playerParams["AV_APP_DOMAIN"] = bundleId
+      playerParams["AV_SCHAIN"] = "502"
+      playerParams["ssai_e"] = "1"
+      playerParams["ssai_p"] = "mediatailor"
+      playerParams["livestream"] = "1"
+      playerParams["coppa"] = "0"
+
+      // user_agent must never be empty (UA-based ad targeting depends on it). WKWebView's
+      // UA is only available asynchronously, so synthesize a Safari-like UA here.
+      if (playerParams["user_agent"]?.isEmpty ?? true) {
+        let osVersion = UIDevice.current.systemVersion.replacingOccurrences(of: ".", with: "_")
+        let model = UIDevice.current.model
+        playerParams["user_agent"] =
+          "Mozilla/5.0 (\(model); CPU OS \(osVersion) like Mac OS X) " +
+          "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+      }
 
       // Overlay every MediaTailor ad-param macro the Dart side sent via headers.
       // Headers take precedence so per-stream targeting (msid override, player size,

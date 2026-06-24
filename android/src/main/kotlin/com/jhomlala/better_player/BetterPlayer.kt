@@ -375,15 +375,21 @@ private fun extractUrlParameters(context: Context, headers: Map<String, String>?
         }
 
         // user_agent: prefer the WebView/browser UA (what ad servers expect for UA-based
-        // targeting); fall back to the lightweight http.agent if WebView is unavailable.
-        val userAgent: String? = try {
+        // targeting); fall back to http.agent, then to a synthesized UA so the value is
+        // NEVER empty (an empty user_agent breaks UA-based ad targeting).
+        var userAgent: String? = try {
             android.webkit.WebSettings.getDefaultUserAgent(context)
         } catch (t: Throwable) {
-            System.getProperty("http.agent")
+            null
         }
-        if (!userAgent.isNullOrEmpty()) {
-            params["user_agent"] = userAgent
+        if (userAgent.isNullOrEmpty()) {
+            userAgent = System.getProperty("http.agent")
         }
+        if (userAgent.isNullOrEmpty()) {
+            userAgent = "Mozilla/5.0 (Linux; Android ${Build.VERSION.RELEASE}; ${Build.MODEL}) " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+        }
+        params["user_agent"] = userAgent
 
         // Player/device-derived defaults. These are set BEFORE the header overlay so the
         // app can still override them per-stream (e.g. exact player-view size) via headers.
@@ -395,6 +401,20 @@ private fun extractUrlParameters(context: Context, headers: Map<String, String>?
             // Display metrics unavailable — leave width/height to header overlay / template default.
         }
         params["AV_RTB_DEVICE_TYPE"] = detectRtbDeviceType(context)
+
+        // App-domain + SSAI/stream-flag defaults (constants for this live-TV SSAI player).
+        // Set BEFORE the header overlay so the app can override any of them per-stream.
+        params["AV_APP_DOMAIN"] = bundleId
+        params["AV_SCHAIN"] = "502"
+        params["ssai_e"] = "1"
+        params["ssai_p"] = "mediatailor"
+        params["livestream"] = "1"
+        params["coppa"] = "0"
+        // App-store URL: derivable on Google Play (Play Store URL for the package). Left to
+        // the header overlay on Amazon/Fire OS (Amazon Appstore URL differs and is app-supplied).
+        if (!isAmazonDevice()) {
+            params["AV_APPSTOREURL"] = "https://play.google.com/store/apps/details?id=$bundleId"
+        }
 
         // Overlay every MediaTailor ad-param macro the Dart side sent via headers.
         // Headers take precedence so per-stream targeting (msid override, player size,
